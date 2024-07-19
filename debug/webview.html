@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    
+    <link rel="stylesheet" type="text/css" href="../src/webview/vscc-treeview.css" />
+    <link rel="stylesheet" type="text/css" href="../node_modules/@vscode/codicons/dist/codicon.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="../dist/webview-entrypoint.js"></script>
+    <script defer>
+      const tree = {
+        a: {
+          aa: {
+            aaa: {
+              aaaa: {
+                aaaaa: {
+                  aaaaaa: {},
+                },
+              },
+            },
+          },
+          ab: {},
+        },
+        b: {
+          ba: {},
+          bb: {},
+        },
+      };
+      let i = 0;
+      const toTree = (tree, indent = 0, res = []) => {
+        for (const [k, v] of Object.entries(tree)) {
+          res.push({
+            label: k,
+            index: i++,
+            indent: indent,
+            collapsibleState: Object.keys(v).length > 0 ? 2 : 0,
+          });
+          if (typeof v === "object") {
+            toTree(v, indent + 1, res);
+          }
+        }
+        return res;
+      };
+      function showList() {
+        const elements = [
+          { label: "a", index: 0, indent: 0, collapsibleState: 2 },
+          { label: "aa", index: 1, indent: 1, collapsibleState: 2 },
+          { label: "aaa", index: 2, indent: 2, collapsibleState: 2 },
+          { label: "aaaa", index: 3, indent: 3, collapsibleState: 2 },
+          { label: "aaaaa", index: 4, indent: 4, collapsibleState: 2 },
+          { label: "aaaaaa", index: 5, indent: 5, collapsibleState: 0 },
+          { label: "ab", index: 6, indent: 1, collapsibleState: 0 },
+          { label: "b", index: 7, indent: 0, collapsibleState: 1 },
+          { label: "ba", index: 8, indent: 1, collapsibleState: 1 },
+          { label: "bb", index: 9, indent: 1, collapsibleState: 1 },
+        ];
+        window.postMessage({
+          type: "list",
+          elements: elements,
+        });
+        window.addEventListener("message", (event) => {
+          const data = event.data;
+          if (data.stub) {
+            const type = data.stub.type;
+            switch (type) {
+              case "clickItem":
+            }
+          }
+        });
+      }
+      showList();
+    </script>
+
+    <button onclick="showList()">list</button>
+  </body>
+</html>
+

@@ -1,0 +1,33 @@
+body{
+  padding-left: 10px;
+  padding-right: 0px;
+}
+
+.treeview-itme-row {
+  display: flex;
+  align-items: center;
+}
+
+.treeview-itme-row-indent {
+  display: block;
+}
+
+.treeview-item-twist-toggle{
+}
+
+.treeview-item-icon-container{
+  flex: 1;
+  display: flex;
+  line-height: 22px;
+}
+
+.treeview-item-label-container{
+}
+
+.treeview-item-describe-container{
+  flex: 1;
+}
+
+.treeview-item-actionbar{
+  flex: 1;
+}
