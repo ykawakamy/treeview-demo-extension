@@ -1,19 +1,52 @@
 import { vscode } from "./vscode-wrapper";
-import { VirtualTreeItem } from "../TreeViewContext";
+import { VirtualTreeId, VirtualTreeItem } from "../TreeViewContext";
+import { DOMAttributes, MouseEventHandler } from "react";
 export interface VsccTreeViewItemProp {
   item: VirtualTreeItem;
+  isSelected: boolean;
+  onSelect: (id: VirtualTreeId)=>void;
+}
+
+export enum TreeItemCollapsibleState {
+  /**
+   * Determines an item can be neither collapsed nor expanded. Implies it has no children.
+   */
+  None = 0,
+  /**
+   * Determines an item is collapsed
+   */
+  Collapsed = 1,
+  /**
+   * Determines an item is expanded
+   */
+  Expanded = 2
 }
 
 const INDENT_PX = 8;
 
 export function VsccTreeViewItem(prop: VsccTreeViewItemProp) {
-  function onClickItem(prop: VirtualTreeItem) {
-    vscode.postMessage({ type: "clickItem", item: prop, index: prop.index });
+  function onClickItem(item: VirtualTreeItem) {
+    switch (item.collapsibleState) {
+      case TreeItemCollapsibleState.Collapsed:
+      case TreeItemCollapsibleState.Expanded:
+        vscode.postMessage({ type: "clickItem", index: item.index });
+        break;
+    }
+  }
+  let hoverDelay: any;
+  function onHoverItem(item: VirtualTreeItem) {
+    clearTimeout(hoverDelay);
+    hoverDelay = setTimeout(() => {
+      vscode.postMessage({ type: "hoverItem", index: item.index });
+    }, 300);
+  }
+  function onUnhoverItem(prop: VirtualTreeItem) {
+    clearTimeout(hoverDelay);
   }
   const item = prop.item;
   function basename(path: string) {
     const index = path.lastIndexOf("/");
-    return path.substring(index !== -1 ? index+1 : 0);
+    return path.substring(index !== -1 ? index + 1 : 0);
   }
   const convertLabel = (item: VirtualTreeItem) => {
     const label = item.label;
@@ -46,9 +79,18 @@ export function VsccTreeViewItem(prop: VsccTreeViewItemProp) {
   const twistableIcon = twistableIconMap[item.collapsibleState ?? 0 /*TreeItemCollapsibleState.None*/];
   const resourceIcon = item.iconClasses;
   // !!item.resourceUri ? "file-icon" : "";
+
+  const events: DOMAttributes<HTMLDivElement> = {
+    onClick: (e) => {
+      prop.onSelect(item.index);
+      onClickItem(item);
+    },
+    onMouseOver: () => onHoverItem(item),
+    onMouseOut: () => onUnhoverItem(item),
+  };
   return (
     <>
-      <div className="treeview-itme-row show-file-icons" title={JSON.stringify(item)} onClick={() => onClickItem(item)}>
+      <div className={"treeview-itme-row show-file-icons " + (prop.isSelected ? "selected" : "") } {...events}>
         <div className="treeview-item-indent" style={{ width: indent }}></div>
         <div className={"treeview-item-twist-toggle codicon " + twistableIcon}></div>
         <div className={"treeview-item-icon-container " + resourceIcon}>
@@ -62,4 +104,3 @@ export function VsccTreeViewItem(prop: VsccTreeViewItemProp) {
     </>
   );
 }
-

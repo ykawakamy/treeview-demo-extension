@@ -1,4 +1,4 @@
-body{
+body {
   padding-left: 10px;
   padding-right: 0px;
 }
@@ -8,26 +8,41 @@ body{
   align-items: center;
 }
 
+.treeview-itme-row:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.treeview-itme-row.selected {
+  background-color: var(--vscode-list-inactiveSelectionBackground);
+}
+
+.treeview-item-row.selected.focused {
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
 .treeview-itme-row-indent {
   display: block;
 }
 
-.treeview-item-twist-toggle{
+.treeview-item-twist-toggle {
 }
 
-.treeview-item-icon-container{
+.treeview-item-icon-container {
   flex: 1;
   display: flex;
   line-height: 22px;
+  overflow: hidden;
 }
 
-.treeview-item-label-container{
+.treeview-item-label-container {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.treeview-item-describe-container{
-  flex: 1;
+.treeview-item-describe-container {
+  flex: 0;
 }
 
-.treeview-item-actionbar{
-  flex: 1;
+.treeview-item-actionbar {
+  flex: 0;
 }

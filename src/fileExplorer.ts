@@ -165,6 +165,15 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
 		return this._onDidChangeFile.event;
 	}
 
+	private _onDidChangeTreeData = new vscode.EventEmitter<Entry | null>();
+	get onDidChangeTreeData(){
+		return this._onDidChangeTreeData.event;
+	}
+
+	refresh(){
+		this._onDidChangeTreeData.fire(null);
+	}
+
 	watch(uri: vscode.Uri, options: { recursive: boolean; excludes: string[]; }): vscode.Disposable {
 		const watcher = fs.watch(uri.fsPath, { recursive: options.recursive }, async (event, filename) => {
 			if (filename) {
@@ -269,6 +278,7 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
 	// tree data provider
 
 	async getChildren(element?: Entry): Promise<Entry[]> {
+		// console.log("getChildren");
 		if (element) {
 			const children = await this.readDirectory(element.uri);
 			return children.map(([name, type]) => ({ uri: vscode.Uri.file(path.join(element.uri.fsPath, name)), type }));
@@ -290,12 +300,20 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
 	}
 
 	getTreeItem(element: Entry): vscode.TreeItem {
+		// console.log("getTreeItem");
 		const treeItem = new vscode.TreeItem(element.uri, element.type === vscode.FileType.Directory ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
 		if (element.type === vscode.FileType.File) {
 			treeItem.command = { command: 'fileExplorer.openFile', title: "Open File", arguments: [element.uri], };
 			treeItem.contextValue = 'file';
 		}
 		return treeItem;
+	}
+
+	/** when hover, call */
+	resolveTreeItem(item: vscode.TreeItem, element: Entry, token: vscode.CancellationToken): vscode.ProviderResult<vscode.TreeItem> {
+		// console.log("resolveTreeItem");
+		
+		return item;
 	}
 }
 

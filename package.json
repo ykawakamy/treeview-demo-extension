@@ -16,21 +16,81 @@
       "explorer": [
         {
           "type": "webview",
-          "id": "treeview-demo",
-          "name": "treeview-demo"
+          "id": "treeviewDemo",
+          "name": "treeviewDemo"
         },
         {
-          "id": "treeview-demo1",
-          "name": "treeview-demo1"
+          "id": "treeviewDemo1",
+          "name": "treeviewDemo1"
         }
       ]
     },
     "commands": [
       {
+        "command": "querySearch.replaceFiles",
+        "title": "%replaceFiles%",
+        "icon": "$(search-replace-all)"
+      },
+      {
         "command": "vscode-webview-treeview.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "vscode-webview-treeview.refresh",
+        "title": "Hello refresh",
+        "icon": "$(search-replace-all)"
+      },
+      {
+        "command": "vscode-webview-treeview.reflesh2",
+        "title": "Hello reflesh2",
+        "icon": "$(search-replace-all)"
       }
-    ]
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "querySearch.openFile",
+          "when": "view == treeviewDemo && viewItem == querySearch.result && querysearch.replaceMode == true",
+          "group": "inline"
+        },
+        {
+          "command": "querySearch.replace",
+          "when": "view == treeviewDemo && viewItem == querySearch.result && querysearch.replaceMode == true",
+          "group": "inline"
+        },
+        {
+          "command": "querySearch.openFile",
+          "when": "view == treeviewDemo && viewItem == querySearch.file && querysearch.replaceMode == true",
+          "group": "inline"
+        },
+        {
+          "command": "querySearch.replaceAll",
+          "when": "view == treeviewDemo && viewItem == querySearch.file && querysearch.replaceMode == true",
+          "group": "inline"
+        },
+        {
+          "command": "querySearch.copyResult",
+          "when": "view == treeviewDemo"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "querySearch.replaceFiles",
+          "when": "view == treeviewDemo1",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-webview-treeview.refresh",
+          "when": "view == treeviewDemo",
+          "group": "navigation"
+        },
+        {
+          "command": "vscode-webview-treeview.refresh2",
+          "when": "view == treeviewDemo1",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -47,6 +107,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
     "@types/react-dom": "^18.3.0",
@@ -58,7 +119,11 @@
     "dev-server": "^0.2.0",
     "esbuild": "^0.21.5",
     "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "jest-mock-vscode": "^3.0.5",
     "npm-run-all": "^4.1.5",
+    "ts-jest": "^29.2.3",
+    "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },
   "dependencies": {

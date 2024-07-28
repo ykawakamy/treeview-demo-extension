@@ -2,11 +2,12 @@ import * as vscode from "vscode";
 import { TreeviewContext } from "./TreeViewContext";
 import { TreeviewProvider } from "./TreeViewProvider";
 import path from "path";
-import { IconTheme, toStyleSheet } from "./IconTheme";
+import { IconTheme } from "./IconTheme";
 import { FileExplorer, FileSystemProvider } from "./fileExplorer";
+import { loadIconTheme } from "./ContributesUtil";
 
 export class DemoWebview implements vscode.WebviewViewProvider {
-  public static readonly viewId = "treeview-demo";
+  public static readonly viewId = "treeviewDemo";
 
   private _extensionUri;
   treeContext!: TreeviewContext<any>;
@@ -18,47 +19,39 @@ export class DemoWebview implements vscode.WebviewViewProvider {
     // const provider = new TreeviewProvider<any>();
     const provider = new FileSystemProvider();
     const provider2 = new FileSystemProvider();
-    this.treeContext = new TreeviewContext(provider);
+    this.treeContext = new TreeviewContext(context, provider);
     const disposable = vscode.commands.registerCommand("vscode-webview-treeview.helloWorld", () => {
       this.treeContext.refresh();
     });
-    
+    context.subscriptions.push(vscode.commands.registerCommand("vscode-webview-treeview.refresh", () => {
+      provider.refresh();
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("vscode-webview-treeview.reflesh2", () => {
+      provider2.refresh();
+    }));
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(DemoWebview.viewId, this));
-    context.subscriptions.push(vscode.window.registerTreeDataProvider(DemoWebview.viewId+"1", provider2));
+    context.subscriptions.push(vscode.window.createTreeView(DemoWebview.viewId + "1", { treeDataProvider: provider2 }));
     context.subscriptions.push(disposable);
 
   }
 
   public async resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext<any>, _token: vscode.CancellationToken) {
-    const iconThemeId = vscode.workspace.getConfiguration("workbench").get("iconTheme");
+    const iconThemeId = vscode.workspace.getConfiguration("workbench").get<string>("iconTheme");
     const exts = vscode.extensions.all;
-    let activeIconTheme: any = {
-      uri: null,
-    };
-    for (const ext of exts) {
-      const iconThemes = ext.packageJSON?.contributes?.iconThemes;
-      for (const iconTheme of iconThemes ?? []) {
-        if (iconTheme?.id === iconThemeId) {
-          activeIconTheme.uri = ext.extensionUri;
-          activeIconTheme.path = iconTheme.path;
-        }
-      }
+    const iconTheme = await loadIconTheme(exts, iconThemeId);
+    if(!iconTheme){
+      throw new Error("failed to loadIconTheme.");
     }
-    const iconThemeJsonUri = vscode.Uri.joinPath(activeIconTheme.uri, activeIconTheme.path);
-    const iconThemeJson = await vscode.workspace.fs.readFile(iconThemeJsonUri);
-    const iconThemeData: IconTheme = JSON.parse(new TextDecoder().decode(iconThemeJson));
-    const iconThemeBaseUri = webviewView.webview.asWebviewUri(vscode.Uri.joinPath(activeIconTheme.uri, path.dirname(activeIconTheme.path)));
-    const iconThemeStyle = await toStyleSheet(iconThemeData, iconThemeBaseUri);
-    
     this.treeContext.attactWebview(webviewView);
+    this.treeContext.loadContributesMenu(this.context.extension);
 
     webviewView.webview.options = {
       // Allow scripts in the webview
       enableScripts: true,
-      localResourceRoots: [this._extensionUri, activeIconTheme.uri],
+      localResourceRoots: [this._extensionUri, iconTheme.uri],
     };
 
-    webviewView.webview.html = await this._getHtmlForWebview(webviewView.webview, context.state, iconThemeStyle);
+    webviewView.webview.html = await this._getHtmlForWebview(webviewView.webview, context.state, iconTheme.styleContent);
   }
 
   private async _getHtmlForWebview(webview: vscode.Webview, state: any, iconThemeStyle: { content: string; hasFileIcons: boolean; hasFolderIcons: boolean; hidesExplorerArrows: boolean }) {
