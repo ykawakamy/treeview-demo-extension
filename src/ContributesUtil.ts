@@ -496,24 +496,40 @@ export async function resolveIconClasses(treeItem: vscode.TreeItem): Promise<str
   return classes.join(" ");
 }
 
-type Ty = "root" | "!" | "&&" | "||" | "comparator";
+type Ty = "root" | "!" | "&&" | "||" | "in" | "comparator";
 const level: Record<Ty, number> = {
-  "!": 1,
-  "&&": 2,
-  "||": 3,
-  comparator: 4,
-  root: 5,
+  "!": 3,
+  comparator: 2,
+  in: 1,
+  "&&": 4,
+  "||": 5,
+  root: 6,
 };
-export function parseWhenClause(when: string | undefined): WhenClauseExpr {
+export function parseWhenClause(when: string | undefined): WhenClause {
   if (!when) {
-    return (item, context) => true;
+    return { op: "root", tree: [], expr: (item, context) => true };
   }
 
-  const pattern = /!={0,2}|\(|\)|'[^']+'|===?|&&|\|\||>=?|<=?|=~|in(?!\w)|not in|[\w._-]+|\/[^/]+\/[ismu]*/g;
+  const pattern = /!={0,2}|\(|\)|'[^']+'|===?|&&|\|\||>=?|<=?|=~|in(?!\w)|not in|[\w._-]+|\/(?:.|\\\/)+\/[ismu]*/g;
   let root: any[] = [];
   let index = 0;
-  const recursion = (parentStack: WhenClause[], parentLevel: number, resolver?: (lt: WhenClause, rt: WhenClause) => WhenClause): WhenClause => {
-    let stack: WhenClause[] = [];
+  let stack: WhenClause[] = [];
+  let opStack: { level: number; expr: (rt: WhenClause) => WhenClause }[] = [];
+  const recursion = (parentLevel: number): WhenClause => {
+    function resolve(currentLevel: number, lazyExpr: (lt: WhenClause) => ((rt: WhenClause) => WhenClause) ) {
+      let prev = opStack.at(-1);
+      while (prev && prev.level < currentLevel) {
+        stack.push(opStack.pop()!.expr(stack.pop()!));
+        prev = opStack.at(-1);
+      }
+      const lt = stack.pop();
+      if (!lt) {
+        throw new Error("failed to parse whenClause");
+      }
+      opStack.push({ level: currentLevel, expr: lazyExpr(lt) });
+      stack.push(recursion(currentLevel));
+    }
+
     while (index < when.length) {
       const parts = pattern.exec(when);
       if (!parts) {
@@ -524,91 +540,61 @@ export function parseWhenClause(when: string | undefined): WhenClauseExpr {
       const op = parts[0][0];
       const token = parts[0];
       if (op === "'") {
-        stack.push({ op: token, tree: [], expr: ContextExpr.String(token) });
+        const unquote = token.slice(1, -1);
+        stack.push({ op: unquote, tree: [], expr: ContextExpr.String(unquote) });
       } else if (token === "(") {
-        stack.push(recursion(stack, level["root"]));
+        const pOpStack = opStack;
+        opStack = [];
+        const pStack = stack;
+        stack = [];
+        pStack.push(recursion(level["root"]));
+        opStack = pOpStack;
+        stack = pStack;
       } else if (token === ")") {
-        if (stack.length !== 1) {
-          throw new Error(`${stack.join(",")}`);
-        }
-        if ( resolver) {
-          const lt = parentStack.pop();
-          if (!lt) {
-            throw new Error("failed to parse whenClause");
-          }
-          return (resolver(lt, stack[0]));
-        }
-        return stack[0];
+        break;
       } else if (token === "!") {
-        const lt = recursion(stack, level["!"]);
-        return { op: "not", tree: [lt], expr: (item, context) => !lt.expr(item, context) };
+        opStack.push({
+          level: level["!"],
+          expr: (rt) => {
+            return { op: "!", tree: [rt], expr: (item, context) => !rt.expr(item, context) };
+          },
+        });
+        stack.push(recursion(level["!"]));
       } else if (token === "&&") {
-        if (parentLevel < level[token] && resolver) {
-          const lt = parentStack.pop();
-          if (!lt) {
-            throw new Error("failed to parse whenClause");
-          }
-          parentStack.push(resolver(lt, recursion(stack, level[token])));
-        }
-        const lt = stack.pop();
-        if (!lt) {
-          throw new Error("failed to parse whenClause");
-        }
-        stack.push(
-          recursion(stack, level["&&"], (lt, rt) => {
-            return toOperator(lt, token, rt);
-          })
-        );
+        const currentLevel = level[token];
+        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
+          return toOperator(lt, token, rt);
+        });
       } else if (token === "||") {
-        if (parentLevel < level[token] && resolver) {
-          const lt = parentStack.pop();
-          if (!lt) {
-            throw new Error("failed to parse whenClause");
-          }
-          parentStack.push(resolver(lt, recursion(stack, level[token])));
-        }
-        const lt = stack.pop();
-        if (!lt) {
-          throw new Error("failed to parse whenClause");
-        }
-        stack.push(
-          recursion(stack, level[token], (rt) => {
-            return toOperator(lt, token, rt);
-          })
-        );
+        const currentLevel = level[token];
+        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
+          return toOperator(lt, token, rt);
+        });
       } else if (isComparator(token)) {
-        const rt = stack.pop();
-        if (!rt) {
-          throw new Error("failed to parse whenClause");
-        }
-        const lt = recursion(stack, level["comparator"]);
-        stack.push({ op: token, tree: [rt, lt], expr: toComparator(rt.expr, token, lt.expr) });
+        const currentLevel = level["comparator"];
+        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
+          return { op: token, tree: [lt, rt], expr: toComparator(lt.expr, token, rt.expr) };
+        });
       } else if (isInClause(token)) {
-        const rt = stack.pop();
-        if (!rt) {
-          throw new Error("failed to parse whenClause");
-        }
-        const lt = recursion(stack, level["comparator"]);
-        stack.push({ op: token, tree: [rt, lt], expr: toComparator(rt.expr, token, lt.expr) });
+        const currentLevel = level["in"];
+        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
+          return { op: token, tree: [lt, rt], expr: toComparator(lt.expr, token, rt.expr) };
+        });
       } else {
-        stack.push({ op: token, tree: [], expr: ContextExpr.Context(token) });
+        if (parentLevel === level["comparator"]) {
+          stack.push({ op: token, tree: [], expr: ContextExpr.String(token) });
+        } else {
+          stack.push({ op: `context: ${token}`, tree: [], expr: ContextExpr.Context(token) });
+        }
       }
     }
-    if (stack.length !== 1) {
-      throw new Error("");
+    while (opStack.at(-1)) {
+      stack.push(opStack.pop()!.expr(stack.pop()!));
     }
     return stack[0];
   };
-  const clause = recursion([], level["root"]);
-  const debug = (clause: WhenClause , nested: number)=>{
-    console.log(`${"  ".repeat(nested)} - ${clause.op}: `);
-    for( const item of clause.tree ){
-      debug(item, nested+1);
-    }
-  };
-  console.log("## "+when);
-  debug(clause, 0);
-  return clause.expr;
+  const clause = recursion(level["root"]);
+  return { op: when, tree: [clause], expr: (item, context) => clause.expr(item, context) };
 }
 function isOperator(token: string) {
   switch (token) {
@@ -657,10 +643,10 @@ function toComparator(lt: WhenClauseExpr, token: string, rt: WhenClauseExpr): Wh
   switch (token) {
     case "!==":
     case "!=":
-      return (item, context) => lt(item, context) !== rt(item, context);
+      return (item, context) => lt(item, context) != rt(item, context);
     case "===":
     case "==":
-      return (item, context) => lt(item, context) === rt(item, context);
+      return (item, context) => lt(item, context) == rt(item, context);
     case "=~":
       return ContextExpr.RegexTest(lt, rt);
     case "<":
@@ -672,9 +658,23 @@ function toComparator(lt: WhenClauseExpr, token: string, rt: WhenClauseExpr): Wh
     case ">=":
       return (item, context) => lt(item, context) >= rt(item, context);
     case "in":
-      return (item, context) => lt(item, context) in rt(item, context);
+      return (item, context) => {
+        const ltVal = lt(item, context);
+        const rtVal = rt(item, context);
+        if (Array.isArray(rtVal)) {
+          return rtVal.includes(ltVal);
+        }
+        return ltVal in rtVal;
+      };
     case "not in":
-      return (item, context) => !(lt(item, context) in rt(item, context));
+      return (item, context) => {
+        const ltVal = lt(item, context);
+        const rtVal = rt(item, context);
+        if (Array.isArray(rtVal)) {
+          return !rtVal.includes(ltVal);
+        }
+        return !(ltVal in rtVal);
+      };
   }
   throw new Error("failed to parse whenClause");
 }

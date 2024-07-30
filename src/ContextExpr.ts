@@ -13,11 +13,11 @@ export namespace ContextExpr {
       const ltVal = lt(item, context);
       const rtVal = rt(item, context);
       if (typeof ltVal === "string" && typeof rtVal === "string") {
-        const regpart = /^\/((.|\\\/)+)\/([ismu]*)$/.exec(rtVal);
+        const regpart = /^\/((?:.|\\\/)+)\/([ismu]*)$/.exec(rtVal);
         if(!regpart){
           return false;
         }
-        return ltVal.match(new RegExp(regpart[1],regpart[2]));
+        return new RegExp(regpart[1],regpart[2]).test(ltVal);
       }
       return false;
     };

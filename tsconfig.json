@@ -4,7 +4,8 @@
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
     "sourceMap": true,
-    "rootDir": "src",
+    "rootDir": ".",
+    "baseUrl": "./src/",
     "jsx": "react-jsx",
     "strict": true /* enable all strict type-checking options */
     /* Additional Checks */

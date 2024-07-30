@@ -27,32 +27,32 @@ sequenceDiagram
 ## when clause
 これらをパースできること。
 ```
-!editorReadonly
-!(editorReadonly || inDebugMode)
-textInputFocus && !editorReadonly
-isLinux || isWindows
-!foo && bar	
-(!foo) && bar
-!foo || bar	
-(!foo) || bar
-foo || bar && baz	
-foo || (bar && baz)
-!foo && bar || baz	
-(!foo && bar) || baz
-!(foo || bar) && baz
-editorLangId == typescript
-editorLangId == 'typescript'
-resourceExtname != .js
-resourceExtname != '.js'
-editorLangId === typescript
-editorLangId === 'typescript'
-resourceExtname !== .js
-resourceExtname !== '.js'
-resourceFilename == 'My New File.md'
-gitOpenRepositoryCount >= 1
-gitOpenRepositoryCount>=1
-resourceScheme =~ /^untitled$|^file$/
-resourceScheme =~ /file:\\/\\//&&
-resourceFilename in supportedFolders
-resourceFilename not in supportedFolders
+x !editorReadonly
+x !(editorReadonly || inDebugMode)
+x textInputFocus && !editorReadonly
+x isLinux || isWindows
+x !foo && bar	
+x (!foo) && bar
+x !foo || bar	
+x (!foo) || bar
+x foo || bar && baz	
+x foo || (bar && baz)
+ !foo && bar || baz	
+ (!foo && bar) || baz
+ !(foo || bar) && baz
+ editorLangId == typescript
+ editorLangId == 'typescript'
+ resourceExtname != .js
+ resourceExtname != '.js'
+ editorLangId === typescript
+ editorLangId === 'typescript'
+ resourceExtname !== .js
+ resourceExtname !== '.js'
+ resourceFilename == 'My New File.md'
+ gitOpenRepositoryCount >= 1
+ gitOpenRepositoryCount>=1
+ resourceScheme =~ /^untitled$|^file$/
+ resourceScheme =~ /file:\\/\\//&&
+ resourceFilename in supportedFolders
+ resourceFilename not in supportedFolders
 ```

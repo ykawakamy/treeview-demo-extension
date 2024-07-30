@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">30.43% </span>
+                <span class="strong">39.13% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>7/23</span>
+                <span class='fraction'>9/23</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">18.18% </span>
+                <span class="strong">36.36% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/11</span>
+                <span class='fraction'>4/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">33.33% </span>
+                <span class="strong">42.85% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>7/21</span>
+                <span class='fraction'>9/21</span>
             </div>
         
             
@@ -103,7 +103,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -130,7 +130,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -138,8 +138,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { WhenClause, WhenClauseExpr } from "./MenuDefinition";
 &nbsp;
 export namespace ContextExpr {
-  export function <span class="fstat-no" title="function not covered" >And(</span>lt: WhenClauseExpr, rt: WhenClauseExpr): WhenClauseExpr {
-<span class="cstat-no" title="statement not covered" >    return <span class="fstat-no" title="function not covered" >(i</span>tem, context) =&gt; <span class="cstat-no" title="statement not covered" >lt(item, context) &amp;&amp; rt(item, context);</span></span>
+  export function And(lt: WhenClauseExpr, rt: WhenClauseExpr): WhenClauseExpr {
+    return <span class="fstat-no" title="function not covered" >(i</span>tem, context) =&gt; <span class="cstat-no" title="statement not covered" >lt(item, context) &amp;&amp; rt(item, context);</span>
   }
   export function <span class="fstat-no" title="function not covered" >Or(</span>lt: WhenClauseExpr, rt: WhenClauseExpr): WhenClauseExpr {
 <span class="cstat-no" title="statement not covered" >    return <span class="fstat-no" title="function not covered" >(i</span>tem, context) =&gt; <span class="cstat-no" title="statement not covered" >lt(item, context) || rt(item, context);</span></span>
@@ -150,11 +150,11 @@ export namespace ContextExpr {
       const ltVal = <span class="cstat-no" title="statement not covered" >lt(item, context);</span>
       const rtVal = <span class="cstat-no" title="statement not covered" >rt(item, context);</span>
 <span class="cstat-no" title="statement not covered" >      <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof ltVal === "string" &amp;&amp; typeof rtVal === "string") {</span>
-        const regpart = <span class="cstat-no" title="statement not covered" >/^\/((.|\\\/)+)\/([ismu]*)$/.exec(rtVal);</span>
+        const regpart = <span class="cstat-no" title="statement not covered" >/^\/((?:.|\\\/)+)\/([ismu]*)$/.exec(rtVal);</span>
 <span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if(!regpart){</span>
 <span class="cstat-no" title="statement not covered" >          return false;</span>
         }
-<span class="cstat-no" title="statement not covered" >        return ltVal.match(new RegExp(regpart[1],regpart[2]));</span>
+<span class="cstat-no" title="statement not covered" >        return new RegExp(regpart[1],regpart[2]).test(ltVal);</span>
       }
 <span class="cstat-no" title="statement not covered" >      return false;</span>
     };
@@ -165,8 +165,8 @@ export namespace ContextExpr {
 <span class="cstat-no" title="statement not covered" >      return context[token];</span>
     };
   }
-  export function <span class="fstat-no" title="function not covered" >String(</span>token: string): WhenClauseExpr {
-<span class="cstat-no" title="statement not covered" >    return <span class="fstat-no" title="function not covered" >(i</span>tem, context) =&gt; {</span>
+  export function String(token: string): WhenClauseExpr {
+    return <span class="fstat-no" title="function not covered" >(i</span>tem, context) =&gt; {
 <span class="cstat-no" title="statement not covered" >      return token;</span>
     };
   }
@@ -178,7 +178,7 @@ export namespace ContextExpr {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2024-07-28T05:00:24.351Z
+                at 2024-07-30T13:33:21.379Z
             </div>
         <script src="prettify.js"></script>
         <script>
