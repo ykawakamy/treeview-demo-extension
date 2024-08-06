@@ -3,16 +3,16 @@ body {
   padding-right: 0px;
 }
 
-.treeview-itme-row {
+.treeview-item-row {
   display: flex;
   align-items: center;
 }
 
-.treeview-itme-row:hover {
+.treeview-item-row:hover {
   background-color: var(--vscode-list-hoverBackground);
 }
 
-.treeview-itme-row.selected {
+.treeview-item-row.selected {
   background-color: var(--vscode-list-inactiveSelectionBackground);
 }
 
@@ -20,12 +20,11 @@ body {
   background-color: var(--vscode-list-activeSelectionBackground);
 }
 
-.treeview-itme-row-indent {
+.treeview-item-row-indent {
   display: block;
 }
 
-.treeview-item-twist-toggle {
-}
+.treeview-item-twist-toggle {}
 
 .treeview-item-icon-container {
   flex: 1;
@@ -43,6 +42,26 @@ body {
   flex: 0;
 }
 
+.treeview-item-row:hover .treeview-item-actionbar {
+  display: block;
+}
+
+.treeview-item-row.selected .treeview-item-actionbar {
+  display: block;
+}
+
 .treeview-item-actionbar {
+  display: none;
   flex: 0;
+  white-space: nowrap;
+}
+
+.treeview-item-actionbar-item {
+  padding: 2px;
+}
+
+.treeview-item-actionbar-item:hover {
+  outline: 1px dashed var(--vscode-toolbar-hoverOutline);
+  outline-offset: -1px;
+  background-color: var(--vscode-toolbar-hoverBackground);
 }

@@ -2,8 +2,10 @@
 - [ ] implement menu - view/item/context
 - [ ] implement FileDecoration
   - [ ] scm/git status
-    - see git.extension.md
-- []
+    - see gitのステータス取得
+- [ ] when clause
+  - [x] parser/ast
+  - [ ] webviewへ渡す際、ast-functionが遅れない
 
 
 # gitのステータス取得

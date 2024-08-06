@@ -38,12 +38,12 @@ export class DemoWebview implements vscode.WebviewViewProvider {
   public async resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext<any>, _token: vscode.CancellationToken) {
     const iconThemeId = vscode.workspace.getConfiguration("workbench").get<string>("iconTheme");
     const exts = vscode.extensions.all;
-    const iconTheme = await loadIconTheme(exts, iconThemeId);
+    const iconTheme = await loadIconTheme(webviewView, exts, iconThemeId);
     if(!iconTheme){
       throw new Error("failed to loadIconTheme.");
     }
+
     this.treeContext.attactWebview(webviewView);
-    this.treeContext.loadContributesMenu(this.context.extension);
 
     webviewView.webview.options = {
       // Allow scripts in the webview
@@ -61,7 +61,7 @@ export class DemoWebview implements vscode.WebviewViewProvider {
     const vsccTreeviewUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, "src", "webview", "vscc-treeview.css"));
 
     // Use a nonce to only allow a specific script to be run.
-    const nonce = getNonce();
+    const nonce = crypto.randomUUID();
 
     return /*html*/ `<!DOCTYPE html>
       <html lang="en">
@@ -81,13 +81,4 @@ export class DemoWebview implements vscode.WebviewViewProvider {
       </body>
       </html>`;
   }
-}
-
-function getNonce() {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
 }

@@ -2,15 +2,10 @@ import { groupCollapsed } from "console";
 import { release } from "os";
 import * as vscode from "vscode";
 import { FileStat } from "./fileExplorer";
-import { VsccTreeViewEvent } from "./webview/treeview";
-import { loadContributesMenu, resolveIconClasses } from "./ContributesUtil";
-import { MenuDefinition } from "./MenuDefinition";
-
-export type VirtualTreeId = number | undefined;
-export interface TreeItemEvent {
-  type: string;
-  index: VirtualTreeId;
-}
+import { loadContributesMenu, resolveTreeIconClasses } from "./ContributesUtil";
+import { Menu, MenuDefinition } from "./MenuDefinition";
+import { TreeViewContextCommandEvent, TreeViewContextEvent, TreeViewContextTreeItemEvent, VirtualTreeId } from "ExtensionEvent";
+import { VsccTreeViewEvent } from "webview/WebViewEvent";
 
 export interface VirtualTreeItem extends vscode.TreeItem {
   index: VirtualTreeId;
@@ -27,9 +22,9 @@ export class TreeviewContext<T extends object> {
   treeItems: Map<VirtualTreeId, VirtualTreeItem[]> = new Map<VirtualTreeId, VirtualTreeItem[]>();
   latestIds = 0;
   root = {} as T;
-  menu!: MenuDefinition;
+  menu: MenuDefinition = {menu:[]};
 
-  constructor(private context: vscode.ExtensionContext, private provider: vscode.TreeDataProvider<T>) {
+  constructor(private context: vscode.ExtensionContext, private provider: vscode.TreeDataProvider<T>, private viewId: string = "treeviewDemo") {
     const onDidChange = provider.onDidChangeTreeData!;
     context.subscriptions.push(
       onDidChange((listener: void | T | T[] | null | undefined): void => {
@@ -61,13 +56,15 @@ export class TreeviewContext<T extends object> {
   }
 
   async attactWebview(webviewView: vscode.WebviewView) {
-    this.menu = await loadContributesMenu(this.context.extension);
     this.webviewView = webviewView;
 
+    await this.loadContributesMenu(this.context.extension);
+
     this.context.subscriptions.push(
-      this.webviewView.webview.onDidReceiveMessage(async (event: TreeItemEvent) => {
+      this.webviewView.webview.onDidReceiveMessage(async (event: TreeViewContextEvent) => {
         switch (event.type) {
           case "componentLoaded":
+            await this.postMessageToWebView({ type: "load-context-item", menuDefinition: this.menu });
             await this.refresh();
             break;
           case "hoverItem":
@@ -77,18 +74,24 @@ export class TreeviewContext<T extends object> {
             this.onClickItem(event);
             break;
           case "command":
-            // if (item.command) {
-            //   vscode.commands.executeCommand(item.command.command, item.command.arguments);
-            // }
+            this.onCommand(event);
             break;
         }
       })
     );
   }
-  async onHoverItem(event: TreeItemEvent) {
+  onCommand(event: TreeViewContextCommandEvent) {
+    const id = event.index;
+    const item = this.realItemFromId.get(id);
+    if (!item) {
+      return;
+    }
+    vscode.commands.executeCommand(event.command, item);
+  }
+  async onHoverItem(event: TreeViewContextTreeItemEvent) {
     const id = event.index;
     const virtualItem = await this.resolve(id);
-    const message: VsccTreeViewEvent = {
+    const message:VsccTreeViewEvent = {
       type: "item-patch",
       elements: [virtualItem as VirtualTreeItem],
       parentId: id,
@@ -96,11 +99,11 @@ export class TreeviewContext<T extends object> {
     this.postMessageToWebView(message);
   }
 
-  private postMessageToWebView(message: VsccTreeViewEvent) {
-    this.webviewView.webview.postMessage(message);
+  private async postMessageToWebView(message: VsccTreeViewEvent) {
+    await this.webviewView.webview.postMessage({ viewId: this.viewId, ...message });
   }
 
-  async onClickItem(event: TreeItemEvent) {
+  async onClickItem(event: TreeViewContextTreeItemEvent) {
     const id = event.index;
     const virtualItem = this.virtualItemFromId.get(id);
     if (!virtualItem) {
@@ -113,7 +116,7 @@ export class TreeviewContext<T extends object> {
         break;
       case vscode.TreeItemCollapsibleState.Expanded:
         virtualItem.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-        this.webviewView.webview.postMessage({
+        this.postMessageToWebView({
           type: "list-patch",
           elements: [virtualItem],
           parentId: id,
@@ -138,13 +141,13 @@ export class TreeviewContext<T extends object> {
         await this.collectList(virtualList, id, virtualItem?.indent ?? 0);
         progress.report({ message: vscode.l10n.t("refresh(collect complete)..."), increment: 50 });
         if (id) {
-          this.webviewView.webview.postMessage({
+          this.postMessageToWebView({
             type: "list-patch",
             elements: virtualList,
             parentId: id,
           });
         } else {
-          this.webviewView.webview.postMessage({
+          this.postMessageToWebView({
             type: "list",
             elements: virtualList,
           });
@@ -202,7 +205,7 @@ export class TreeviewContext<T extends object> {
       return virtualItem;
     }
     const treeItem = await asPromise<vscode.TreeItem>(this.provider.getTreeItem(realItem));
-    const iconClasses = await resolveIconClasses(treeItem);
+    const iconClasses = await resolveTreeIconClasses(treeItem);
     const id = this.latestIds++;
     const newVirtualItem = {
       ...treeItem,
@@ -218,7 +221,7 @@ export class TreeviewContext<T extends object> {
   }
 
   async loadContributesMenu(extension: vscode.Extension<any>) {
-    this.menu = loadContributesMenu(extension);
+    this.menu.menu.push(...await loadContributesMenu(this.webviewView.webview, extension));
   }
 
 }

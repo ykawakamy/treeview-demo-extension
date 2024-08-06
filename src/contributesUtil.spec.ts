@@ -1,7 +1,7 @@
 import { expect, jest, test } from "@jest/globals";
 import assert from "assert";
-import { parseWhenClause } from "./ContributesUtil";
 import { WhenClause } from "./MenuDefinition";
+import { parseWhenClause } from "./webview/WhenClauseParser";
 
 function assertWhenClause(clause: WhenClause, actual: boolean, expected: boolean) {
   try {

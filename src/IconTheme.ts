@@ -1,16 +1,13 @@
-import path from "path";
-import * as vscode from "vscode";
+export type VscodeContributesIconDefinition = VscodeContributesFontIconDefinition & VscodeContributesSvgIconDefinition;
 
-export type IconDefinition = FontIconDefinition & SvgIconDefinition;
-
-export interface FontIconDefinition {
+export interface VscodeContributesFontIconDefinition {
   fontCharacter: string;
   fontColor: string;
   fontSize: string;
   fontId: string;
 }
 
-export interface SvgIconDefinition {
+export interface VscodeContributesSvgIconDefinition {
   iconPath: string;
 }
 export interface FontDefinition {
@@ -39,7 +36,7 @@ export interface IconsAssociation {
 }
 
 export interface IconTheme extends IconsAssociation {
-  iconDefinitions: { [key: string]: IconDefinition };
+  iconDefinitions: { [key: string]: VscodeContributesIconDefinition };
   fonts: FontDefinition[];
   light?: IconsAssociation;
   highContrast?: IconsAssociation;
@@ -47,3 +44,8 @@ export interface IconTheme extends IconsAssociation {
   showLanguageModeIcons?: boolean;
 }
 
+export type VscodeContributesCommandsIconDefinition = ColorThemeIcon | string;
+export interface ColorThemeIcon {
+  dark: any;
+  light: any;
+}

@@ -1,31 +1,36 @@
 import path from "path";
-import { IconTheme, IconsAssociation } from "./IconTheme";
 import * as vscode from "vscode";
-import { ManifestCommand, ManifestMenu, WhenClause, WhenClauseExpr } from "./MenuDefinition";
-import { ContextExpr } from "./ContextExpr";
+import { VscodeContributesIconDefinition, IconTheme, IconsAssociation, VscodeContributesCommandsIconDefinition } from "./IconTheme";
+import { ManifestCommand, ManifestViewItemContext, Menu, VscodePackageJSON } from "./MenuDefinition";
+import { productIcomMapping } from "webview/vscodeProductIconMapping";
+import { Minimatch, minimatch } from "minimatch";
 
-export async function loadContributesMenu(extension: vscode.Extension<any>) {
-  const commands: Record<string, ManifestCommand> = extension.packageJSON.commands;
-  const contexts: ManifestMenu[] = extension.packageJSON.menu?.["view/item/context"];
+export async function loadContributesMenu(webview: vscode.Webview, extension: vscode.Extension<any>): Promise<Menu[]> {
+  const packageJSON: VscodePackageJSON = extension.packageJSON;
+  const commands = packageJSON.contributes.commands.reduce((p, c) => { p[c.command] = c; return p; }, {} as Record<string, ManifestCommand>);
+  const contexts: ManifestViewItemContext[] = packageJSON.contributes.menus?.["view/item/context"];
   if (!contexts) {
-    return {};
+    return [];
   }
-  const menu = [];
+  const menu: Menu[] = [];
   for (const context of contexts) {
     const command = commands[context.command];
+    if (!command) {
+      console.error(`not found command ${context.command}`);
+      continue;
+    }
     menu.push({
       command: context.command,
       title: command.title,
       icon: command.icon,
-      when: parseWhenClause(context.when),
+      iconClasses: await resolveIconClass(webview, command.icon),
+      unparsedWhen: context.when,
     });
   }
-  return {
-    menu,
-  };
+  return menu;
 }
 
-export async function loadIconTheme(exts: readonly vscode.Extension<any>[], iconThemeId?: string | undefined) {
+export async function loadIconTheme(webviewView: vscode.WebviewView, exts: readonly vscode.Extension<any>[], iconThemeId?: string | undefined) {
   let activeIconTheme: { uri: vscode.Uri; path: string } | undefined;
   for (const ext of exts) {
     const iconThemes = ext.packageJSON?.contributes?.iconThemes;
@@ -44,17 +49,18 @@ export async function loadIconTheme(exts: readonly vscode.Extension<any>[], icon
   const iconThemeJsonUri = vscode.Uri.joinPath(activeIconTheme.uri, activeIconTheme.path);
   const iconThemeJson = await vscode.workspace.fs.readFile(iconThemeJsonUri);
   const iconThemeData: IconTheme = JSON.parse(new TextDecoder().decode(iconThemeJson));
-  const uri = vscode.Uri.joinPath(activeIconTheme.uri, path.dirname(activeIconTheme.path));
-  const styleContent = await toStyleSheet(iconThemeData, uri);
-
+  const uriOnDisk = vscode.Uri.joinPath(activeIconTheme.uri, path.dirname(activeIconTheme.path));
+  const uriOnWebview = webviewView.webview.asWebviewUri(uriOnDisk);
+  const styleContent = await toStyleSheet(iconThemeData, uriOnWebview);
+  vscode.FileDecoration
   return {
     styleContent,
-    uri,
+    uri: uriOnDisk,
   };
 }
 
 export async function toStyleSheet(iconThemeDocument: IconTheme, iconThemeBaseUri: vscode.Uri) {
-  // XXX from https://github.com/microsoft/vscode/blob/14addc7735fcb99fd42c35e5d7e8e984611132b8/src/vs/workbench/services/themes/browser/fileIconThemeData.ts
+  // XXX from https://github.com/microsoft/vscode/blob/14addc7735fcb99fd42c35e5d7e8e984611132b8/src/vs/workbench/services/themes/browser/fileIconThemeData.ts#L230C10-L230C3
   //
   const result = {
     content: "",
@@ -71,9 +77,8 @@ export async function toStyleSheet(iconThemeDocument: IconTheme, iconThemeBaseUr
   const selectorByDefinitionId: { [def: string]: string[] } = {};
   const coveredLanguages: { [languageId: string]: boolean } = {};
 
-  const iconThemeDocumentLocationDirname = iconThemeBaseUri;
   function resolvePath(path: string) {
-    return vscode.Uri.joinPath(iconThemeDocumentLocationDirname, path);
+    return vscode.Uri.joinPath(iconThemeBaseUri, path);
   }
 
   function collectSelectors(associations: IconsAssociation | undefined, baseThemeClassName?: string) {
@@ -274,12 +279,12 @@ export async function toStyleSheet(iconThemeDocument: IconTheme, iconThemeBaseUr
       if (!coveredLanguages[languageId]) {
         // XXX can't reimplement
         /*
-					const icon = this.languageService.getIcon(languageId);
-					if (icon) {
-						const selector = `.show-file-icons .${escapeCSS(languageId)}-lang-file-icon.file-icon::before`;
-						cssRules.push(`${selector} { content: ' '; background-image: ${asCSSUrl(icon.dark)}; }`);
-						cssRules.push(`.vs ${selector} { content: ' '; background-image: ${asCSSUrl(icon.light)}; }`);
-					}
+          const icon = this.languageService.getIcon(languageId);
+          if (icon) {
+            const selector = `.show-file-icons .${escapeCSS(languageId)}-lang-file-icon.file-icon::before`;
+            cssRules.push(`${selector} { content: ' '; background-image: ${asCSSUrl(icon.dark)}; }`);
+            cssRules.push(`.vs ${selector} { content: ' '; background-image: ${asCSSUrl(icon.light)}; }`);
+          }
           */
       }
     }
@@ -384,7 +389,7 @@ function cssEscape(value: any) {
   return result;
 }
 
-export async function resolveIconClasses(treeItem: vscode.TreeItem): Promise<string> {
+export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise<string> {
   // from https://github.com/microsoft/vscode/blob/14addc7735fcb99fd42c35e5d7e8e984611132b8/src/vs/editor/common/services/getIconClasses.ts#L17
   const fileIconDirectoryRegex = /(?:\/|^)(?:([^\/]+)\/)?([^\/]+)$/;
   function isThemeColor(obj: any): obj is vscode.ThemeColor {
@@ -478,14 +483,6 @@ export async function resolveIconClasses(treeItem: vscode.TreeItem): Promise<str
         classes.push(`ext-file-icon`); // extra segment to increase file-ext score
       }
 
-      async function detectLanguageId(resource: vscode.Uri): Promise<string | undefined> {
-        try {
-          const document = await vscode.workspace.openTextDocument(resource);
-          return document.languageId;
-        } catch (e) {
-          return "binary";
-        }
-      }
       // Detected Mode
       const detectedLanguageId = await detectLanguageId(resource);
       if (detectedLanguageId) {
@@ -496,222 +493,54 @@ export async function resolveIconClasses(treeItem: vscode.TreeItem): Promise<str
   return classes.join(" ");
 }
 
-type Ty = "root" | "!" | "&&" | "||" | "in" | "comparator";
-const level: Record<Ty, number> = {
-  "!": 3,
-  comparator: 2,
-  in: 1,
-  "&&": 4,
-  "||": 5,
-  root: 6,
-};
-export function parseWhenClause(when: string | undefined): WhenClause {
-  if (!when) {
-    return { op: "root", tree: [], expr: (item, context) => true };
+let cache: Record<string,string>;
+let cachePattern: Record<string, Minimatch> = {};
+async function detectLanguageId(resource: vscode.Uri): Promise<string | undefined> {
+  const filesAssociations = cache || vscode.workspace.getConfiguration('files').get<Record<string,string>>('associations');
+  if (filesAssociations) {
+    cache = filesAssociations;
+    // const matcher = (bestMatch: [string, any], [pattern, langId]: [string, any]): [string, any] => {
+    //   if (pattern.length > bestMatch[0].length && minimatch(resource.path, pattern)) {
+    //     return [pattern, langId];
+    //   }
+    //   return bestMatch;
+    // };
+    // const [pattern, langId] = Object.entries(filesAssociations).reduce(matcher, ["", undefined]);
+    const matched = Object.entries(filesAssociations).find(([pattern, langId])=>{
+      const matcher = cachePattern[pattern] || (cachePattern[pattern] = new Minimatch(pattern));
+      return matcher.match(resource.path);
+    });
+    const langId = matched?.[1];
+    if( langId ){
+      return langId;
+    }
   }
 
-  const pattern = /!={0,2}|\(|\)|'[^']+'|===?|&&|\|\||>=?|<=?|=~|in(?!\w)|not in|[\w._-]+|\/(?:.|\\\/)+\/[ismu]*/g;
-  let root: any[] = [];
-  let index = 0;
-  let stack: WhenClause[] = [];
-  let opStack: { level: number; expr: (rt: WhenClause) => WhenClause }[] = [];
-  const recursion = (parentLevel: number): WhenClause => {
-    function resolve(currentLevel: number, lazyExpr: (lt: WhenClause) => ((rt: WhenClause) => WhenClause) ) {
-      let prev = opStack.at(-1);
-      while (prev && prev.level < currentLevel) {
-        stack.push(opStack.pop()!.expr(stack.pop()!));
-        prev = opStack.at(-1);
+  try {
+    // TODO: too slow
+    const document = await vscode.workspace.openTextDocument(resource);
+    return document.languageId;
+  } catch (e) {
+    return "binary";
+  }
+}
+
+export async function resolveIconClass(webview: vscode.Webview, icon: VscodeContributesCommandsIconDefinition): Promise<string> {
+  const colorTheme = vscode.window.activeColorTheme.kind;
+  if (typeof icon === "string") {
+    // productIcon expression
+    if (icon.startsWith("$(") && icon.endsWith(")")) {
+      const iconId = icon.slice(2, -1);
+      if (productIcomMapping[iconId]) {
+        return `codicon codicon-${productIcomMapping[iconId]}`;
       }
-      const lt = stack.pop();
-      if (!lt) {
-        throw new Error("failed to parse whenClause");
-      }
-      opStack.push({ level: currentLevel, expr: lazyExpr(lt) });
-      stack.push(recursion(currentLevel));
+
+      return `codicon codicon-${iconId}`;
     }
 
-    while (index < when.length) {
-      const parts = pattern.exec(when);
-      if (!parts) {
-        index = when.length;
-        break;
-      }
-      index = pattern.lastIndex;
-      const op = parts[0][0];
-      const token = parts[0];
-      if (op === "'") {
-        const unquote = token.slice(1, -1);
-        stack.push({ op: unquote, tree: [], expr: ContextExpr.String(unquote) });
-      } else if (token === "(") {
-        const pOpStack = opStack;
-        opStack = [];
-        const pStack = stack;
-        stack = [];
-        pStack.push(recursion(level["root"]));
-        opStack = pOpStack;
-        stack = pStack;
-      } else if (token === ")") {
-        break;
-      } else if (token === "!") {
-        opStack.push({
-          level: level["!"],
-          expr: (rt) => {
-            return { op: "!", tree: [rt], expr: (item, context) => !rt.expr(item, context) };
-          },
-        });
-        stack.push(recursion(level["!"]));
-      } else if (token === "&&") {
-        const currentLevel = level[token];
-        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
-          return toOperator(lt, token, rt);
-        });
-      } else if (token === "||") {
-        const currentLevel = level[token];
-        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
-          return toOperator(lt, token, rt);
-        });
-      } else if (isComparator(token)) {
-        const currentLevel = level["comparator"];
-        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
-          return { op: token, tree: [lt, rt], expr: toComparator(lt.expr, token, rt.expr) };
-        });
-      } else if (isInClause(token)) {
-        const currentLevel = level["in"];
-        resolve(currentLevel, (lt: WhenClause) => (rt: WhenClause): WhenClause => {
-          return { op: token, tree: [lt, rt], expr: toComparator(lt.expr, token, rt.expr) };
-        });
-      } else {
-        if (parentLevel === level["comparator"]) {
-          stack.push({ op: token, tree: [], expr: ContextExpr.String(token) });
-        } else {
-          stack.push({ op: `context: ${token}`, tree: [], expr: ContextExpr.Context(token) });
-        }
-      }
-    }
-    while (opStack.at(-1)) {
-      stack.push(opStack.pop()!.expr(stack.pop()!));
-    }
-    return stack[0];
-  };
-  const clause = recursion(level["root"]);
-  return { op: when, tree: [clause], expr: (item, context) => clause.expr(item, context) };
-}
-function isOperator(token: string) {
-  switch (token) {
-    case "!":
-    case "||":
-    case "&&":
-      return true;
+    // TODO: file path is not supported.
+    return ``;
   }
-  return false;
+  // TODO: ColorTheme is not supported.
+  return "";
 }
-function toOperator(lt: WhenClause, token: string, rt: WhenClause): WhenClause {
-  switch (token) {
-    case "||":
-      return { op: token, tree: [lt, rt], expr: ContextExpr.Or(lt.expr, rt.expr) };
-    case "&&":
-      return { op: token, tree: [lt, rt], expr: ContextExpr.And(lt.expr, rt.expr) };
-  }
-  throw new Error("failed to parse whenClause");
-}
-function isComparator(token: string) {
-  switch (token) {
-    case "!==":
-    case "!=":
-    case "===":
-    case "==":
-    case "=~":
-    case "<":
-    case "<=":
-    case ">":
-    case ">=":
-      return true;
-  }
-  return false;
-}
-
-function isInClause(token: string) {
-  switch (token) {
-    case "in":
-    case "not in":
-      return true;
-  }
-  return false;
-}
-
-function toComparator(lt: WhenClauseExpr, token: string, rt: WhenClauseExpr): WhenClauseExpr {
-  switch (token) {
-    case "!==":
-    case "!=":
-      return (item, context) => lt(item, context) != rt(item, context);
-    case "===":
-    case "==":
-      return (item, context) => lt(item, context) == rt(item, context);
-    case "=~":
-      return ContextExpr.RegexTest(lt, rt);
-    case "<":
-      return (item, context) => lt(item, context) < rt(item, context);
-    case "<=":
-      return (item, context) => lt(item, context) <= rt(item, context);
-    case ">":
-      return (item, context) => lt(item, context) > rt(item, context);
-    case ">=":
-      return (item, context) => lt(item, context) >= rt(item, context);
-    case "in":
-      return (item, context) => {
-        const ltVal = lt(item, context);
-        const rtVal = rt(item, context);
-        if (Array.isArray(rtVal)) {
-          return rtVal.includes(ltVal);
-        }
-        return ltVal in rtVal;
-      };
-    case "not in":
-      return (item, context) => {
-        const ltVal = lt(item, context);
-        const rtVal = rt(item, context);
-        if (Array.isArray(rtVal)) {
-          return !rtVal.includes(ltVal);
-        }
-        return !(ltVal in rtVal);
-      };
-  }
-  throw new Error("failed to parse whenClause");
-}
-
-// export function parseWhenClause2(when: string | undefined): WhenClause {
-//   if (!when) {
-//     return (item, context) => true;
-//   }
-
-//   const pattern = /!={0,2}|\(|\)|'[^']+'|===?|&&|\|\||>=?|<=?|=~|in(?!\w)|not in|[\w._-]+|\/[^/]+\/[ismu]*/g;
-//   let root: any[] = [];
-//   let index = 0;
-//   const recursion = (parentStack: WhenClause[], parentLevel: number, resolver?: (lt: WhenClause, rt: WhenClause) => WhenClause): WhenClause => {
-//     let stack: WhenClause[] = [];
-//     while (index < when.length) {
-//       const parts = pattern.exec(when);
-//       if (!parts) {
-//         index = when.length;
-//         break;
-//       }
-//       index = pattern.lastIndex;
-//       const op = parts[0][0];
-//       const token = parts[0];
-//       if (op === "'") {
-//         stack.push(ContextExpr.String(token));
-//       } else if (token === "(") {
-//         stack.push(recursion(stack, level["root"]));
-//       } else if (token === ")") {
-//         if (stack.length !== 1) {
-//           throw new Error(`${stack.join(",")}`);
-//         }
-//         return stack[0];
-//       } else {
-//         stack.push(ContextExpr.Context(token));
-//       }
-//     }
-//     return ()=>true;
-//   };
-//   return recursion([], 0);
-// }

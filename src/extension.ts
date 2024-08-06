@@ -15,7 +15,16 @@ export function activate(context: vscode.ExtensionContext) {
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 
-
+	vscode.commands.registerCommand('fileExplorer.openFile', (resource) => vscode.window.showTextDocument(resource));
+	const probeAction = (...args: any) => {
+		const json = JSON.stringify(args, null, 2);
+		vscode.window.showInformationMessage(json);
+		console.log(json);
+	};
+	vscode.commands.registerCommand('fileExplorer.openDir', probeAction);
+	vscode.commands.registerCommand('vscode-webview-treeview.openFile', probeAction);
+	vscode.commands.registerCommand('vscode-webview-treeview.isFile', probeAction);
+	vscode.commands.registerCommand('vscode-webview-treeview.isFolder', probeAction);
 	new DemoWebview(context);
 }
 

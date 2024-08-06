@@ -17,7 +17,7 @@
         {
           "type": "webview",
           "id": "treeviewDemo",
-          "name": "treeviewDemo"
+          "name": "treeview on webview"
         },
         {
           "id": "treeviewDemo1",
@@ -27,55 +27,67 @@
     },
     "commands": [
       {
-        "command": "querySearch.replaceFiles",
-        "title": "%replaceFiles%",
-        "icon": "$(search-replace-all)"
-      },
-      {
-        "command": "vscode-webview-treeview.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "vscode-webview-treeview.refresh",
         "title": "Hello refresh",
         "icon": "$(search-replace-all)"
       },
       {
-        "command": "vscode-webview-treeview.reflesh2",
+        "command": "vscode-webview-treeview.refresh2",
         "title": "Hello reflesh2",
         "icon": "$(search-replace-all)"
+      },
+      {
+        "command": "fileExplorer.openFile",
+        "title": "open file",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "fileExplorer.openDir",
+        "title": "open folder",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "vscode-webview-treeview.openFile",
+        "title": "open file",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "vscode-webview-treeview.isFile",
+        "title": "is file",
+        "icon": "$(file)"
+      },
+      {
+        "command": "vscode-webview-treeview.isFolder",
+        "title": "is folder",
+        "icon": "$(file-folder)"
       }
     ],
     "menus": {
       "view/item/context": [
         {
-          "command": "querySearch.openFile",
+          "command": "vscode-webview-treeview.isFile",
+          "when": "view == treeviewDemo && viewItem == file",
+          "group": "inline"
+        },
+        {
+          "command": "vscode-webview-treeview.isFolder",
           "when": "view == treeviewDemo && viewItem == querySearch.result && querysearch.replaceMode == true",
           "group": "inline"
         },
         {
-          "command": "querySearch.replace",
-          "when": "view == treeviewDemo && viewItem == querySearch.result && querysearch.replaceMode == true",
+          "command": "vscode-webview-treeview.openFile",
+          "when": "view == treeviewDemo",
           "group": "inline"
         },
         {
-          "command": "querySearch.openFile",
-          "when": "view == treeviewDemo && viewItem == querySearch.file && querysearch.replaceMode == true",
+          "command": "vscode-webview-treeview.openFile",
+          "when": "view == treeviewDemo1",
           "group": "inline"
-        },
-        {
-          "command": "querySearch.replaceAll",
-          "when": "view == treeviewDemo && viewItem == querySearch.file && querysearch.replaceMode == true",
-          "group": "inline"
-        },
-        {
-          "command": "querySearch.copyResult",
-          "when": "view == treeviewDemo"
         }
       ],
       "view/title": [
         {
-          "command": "querySearch.replaceFiles",
+          "command": "vscode-webview-treeview.openFile",
           "when": "view == treeviewDemo1",
           "group": "navigation"
         },
@@ -130,6 +142,7 @@
     "@react-hook/event": "^1.2.6",
     "@types/vscode-webview": "^1.57.5",
     "@vscode/codicons": "^0.0.36",
+    "minimatch": "^10.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   }

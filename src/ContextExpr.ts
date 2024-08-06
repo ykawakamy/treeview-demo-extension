@@ -25,6 +25,9 @@ export namespace ContextExpr {
 
   export function Context(token: string): WhenClauseExpr {
     return (item, context) => {
+      if( token === 'viewItem'){
+        return item.contextValue;
+      }
       return context[token];
     };
   }
