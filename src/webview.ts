@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { TreeviewContext } from "./TreeViewContext";
+import { TreeviewOnWebviewProvider } from "./TreeViewContext";
 import { TreeviewProvider } from "./TreeViewProvider";
 import path from "path";
 import { IconTheme } from "./IconTheme";
@@ -7,10 +7,11 @@ import { FileExplorer, FileSystemProvider } from "./fileExplorer";
 import { loadIconTheme } from "./ContributesUtil";
 
 export class DemoWebview implements vscode.WebviewViewProvider {
-  public static readonly viewId = "treeviewDemo";
-
+  public static readonly treeviewOnWebviewId = "treeviewOnWebview";
+  public static readonly realTreeviewId = "realTreeview";
   private _extensionUri;
-  treeContext!: TreeviewContext<any>;
+  treeContext!: TreeviewOnWebviewProvider<any>;
+  treeContext2!: TreeviewOnWebviewProvider<any>;
 
   constructor(private context: vscode.ExtensionContext) {
     this._extensionUri = context.extensionUri;
@@ -18,8 +19,13 @@ export class DemoWebview implements vscode.WebviewViewProvider {
     
     // const provider = new TreeviewProvider<any>();
     const provider = new FileSystemProvider();
+    this.treeContext = new TreeviewOnWebviewProvider(context, provider, "treeviewDemo");
     const provider2 = new FileSystemProvider();
-    this.treeContext = new TreeviewContext(context, provider);
+    this.treeContext2 = new TreeviewOnWebviewProvider(context, provider2, "treeviewDemo2");
+    context.subscriptions.push(vscode.window.registerWebviewViewProvider(DemoWebview.treeviewOnWebviewId, this));
+    const provider3 = new FileSystemProvider();
+    context.subscriptions.push(vscode.window.createTreeView(DemoWebview.realTreeviewId, { treeDataProvider: provider3 }));
+
     const disposable = vscode.commands.registerCommand("vscode-webview-treeview.helloWorld", () => {
       this.treeContext.refresh();
     });
@@ -29,9 +35,22 @@ export class DemoWebview implements vscode.WebviewViewProvider {
     context.subscriptions.push(vscode.commands.registerCommand("vscode-webview-treeview.reflesh2", () => {
       provider2.refresh();
     }));
-    context.subscriptions.push(vscode.window.registerWebviewViewProvider(DemoWebview.viewId, this));
-    context.subscriptions.push(vscode.window.createTreeView(DemoWebview.viewId + "1", { treeDataProvider: provider2 }));
+
     context.subscriptions.push(disposable);
+
+    const registerProbeAction = (command: string) => {
+      this.treeContext.registerCommand(command, (...args: any) => {
+        const json = JSON.stringify(args, null, 2);
+        // vscode.window.showInformationMessage(json);
+        console.log(`\u001b[31m-- ${command}\n\u001b[0m${json}\n--`);
+      }, context.subscriptions);
+    };
+    // vscode.commands.registerCommand('fileExplorer.openFile', (resource) => this.openResource(resource));
+    registerProbeAction('fileExplorer.openFile');
+    registerProbeAction('fileExplorer.openDir');
+    registerProbeAction('vscode-webview-treeview.openFile');
+    registerProbeAction('vscode-webview-treeview.isFile');
+    registerProbeAction('vscode-webview-treeview.isFolder');
 
   }
 
@@ -44,6 +63,7 @@ export class DemoWebview implements vscode.WebviewViewProvider {
     }
 
     this.treeContext.attactWebview(webviewView);
+    this.treeContext2.attactWebview(webviewView);
 
     webviewView.webview.options = {
       // Allow scripts in the webview

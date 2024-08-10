@@ -3,9 +3,18 @@
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
         "ecmaVersion": 6,
-        "sourceType": "module"
+        "sourceType": "module",
+        "ecmaFeatures": {
+            "jsx": true
+        }
     },
+    "extends": [
+        "eslint:recommended",
+        "plugin:react/recommended",
+        "plugin:react/jsx-runtime"
+    ],
     "plugins": [
+        "react",
         "@typescript-eslint"
     ],
     "rules": {
@@ -13,14 +22,21 @@
             "warn",
             {
                 "selector": "import",
-                "format": [ "camelCase", "PascalCase" ]
+                "format": [
+                    "camelCase",
+                    "PascalCase"
+                ]
             }
         ],
         "@typescript-eslint/semi": "warn",
         "curly": "warn",
         "eqeqeq": "warn",
         "no-throw-literal": "warn",
-        "semi": "off"
+        "semi": "off",
+        "no-control-regex": "off",
+        "no-inner-declarations": "off",
+        "no-unused-vars": "off",
+        "no-undef":"off"
     },
     "ignorePatterns": [
         "out",

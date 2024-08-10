@@ -1,25 +1,22 @@
-import { TreeItem } from "vscode";
 import useEvent from "@react-hook/event";
-import { TreeItemCollapsibleState, VsccTreeViewItem } from "./treeviewitem";
-import { useCallback, useEffect, useReducer, useState } from "react";
-import { VirtualTreeItem } from "../TreeViewContext";
-import { vscode } from "./vscode-wrapper";
 import { MenuDefinition } from "MenuDefinition";
-import { parseWhenClause } from "./WhenClauseParser";
+import { useEffect, useState } from "react";
 import { VirtualTreeId } from "../ExtensionEvent";
+import VirtualTreeItem from "../TreeViewContext";
+import { TreeItemCollapsibleState, VsccTreeViewItem } from "./treeviewitem";
 import { VsccTreeViewEventWithViewId, VsccTreeViewItemEvent } from "./WebViewEvent";
 import { postMessageToExtension } from "./WebViewTreeViewContext";
+import { parseWhenClause } from "./WhenClauseParser";
 
 export interface VsccTreeViewProp {
-  viewId?: string;
+  viewId: string;
 }
 
 export function VsccTreeView(prop: VsccTreeViewProp) {
   console.log("VsccTreeView");
   const [selectedId, setSelectedId] = useState<VirtualTreeId>(undefined);
   const [treeItems, setTreeItems] = useState<VirtualTreeItem[]>([]);
-  const [menuDefinition, setMenuDefinition] = useState<MenuDefinition>({menu:[]});
-  const prefix = "";
+  const [menuDefinition, setMenuDefinition] = useState<MenuDefinition>({actionBarMenu:[], contextMenu:[]});
   useEvent(window, "message", (e: MessageEvent<VsccTreeViewEventWithViewId>) => {
     const message = e.data;
     if( message.viewId !== prop.viewId){
@@ -31,7 +28,7 @@ export function VsccTreeView(prop: VsccTreeViewProp) {
       case "list":
         setTreeItems(message.elements);
         break;
-      case "list-patch":
+      case "list-patch":{
         // clone
         const index = treeItems.findIndex((item) => item.index === message.parentId);
         if (index === -1) {
@@ -56,11 +53,12 @@ export function VsccTreeView(prop: VsccTreeViewProp) {
           setTreeItems(clone);
         }
         break;
+      }
       case "item-patch":
         itemPatch(message);
         break;
       case "load-context-item":
-        message.menuDefinition.menu?.forEach(x=>{
+        message.menuDefinition.actionBarMenu?.forEach(x=>{
           if( x.unparsedWhen){
             x.when = parseWhenClause(x.unparsedWhen);
           }
@@ -79,11 +77,11 @@ export function VsccTreeView(prop: VsccTreeViewProp) {
     setTreeItems(clone);
   }
   useEffect(() => {
-    postMessageToExtension({ type: "componentLoaded" });
+    postMessageToExtension(prop.viewId, { type: "componentLoaded" });
   }, []);
 
   return (
-    <div>
+    <div className="treeview" data-vscode-context={`{"view":"${prop.viewId}", "preventDefaultContextMenuItems": true}`}>
       {treeItems.map((x) => {
         return <VsccTreeViewItem 
           item={x} 

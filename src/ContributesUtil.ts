@@ -1,33 +1,45 @@
+import { Minimatch } from "minimatch";
 import path from "path";
 import * as vscode from "vscode";
-import { VscodeContributesIconDefinition, IconTheme, IconsAssociation, VscodeContributesCommandsIconDefinition } from "./IconTheme";
-import { ManifestCommand, ManifestViewItemContext, Menu, VscodePackageJSON } from "./MenuDefinition";
 import { productIcomMapping } from "webview/vscodeProductIconMapping";
-import { Minimatch, minimatch } from "minimatch";
+import { IconTheme, IconsAssociation, VscodeContributesCommandsIconDefinition } from "./IconTheme";
+import { ManifestCommand, ManifestViewItemContext, Menu, MenuDefinition, VscodePackageJSON } from "./MenuDefinition";
 
-export async function loadContributesMenu(webview: vscode.Webview, extension: vscode.Extension<any>): Promise<Menu[]> {
+export async function loadContributesMenu(webview: vscode.Webview, extension: vscode.Extension<any>): Promise<MenuDefinition> {
   const packageJSON: VscodePackageJSON = extension.packageJSON;
   const commands = packageJSON.contributes.commands.reduce((p, c) => { p[c.command] = c; return p; }, {} as Record<string, ManifestCommand>);
   const contexts: ManifestViewItemContext[] = packageJSON.contributes.menus?.["view/item/context"];
   if (!contexts) {
-    return [];
+    return { actionBarMenu: [], contextMenu: [] };
   }
-  const menu: Menu[] = [];
+  const actionBarMenu: Menu[] = [];
+  const contextMenu: Menu[] = [];
   for (const context of contexts) {
     const command = commands[context.command];
     if (!command) {
       console.error(`not found command ${context.command}`);
       continue;
     }
-    menu.push({
-      command: context.command,
-      title: command.title,
-      icon: command.icon,
-      iconClasses: await resolveIconClass(webview, command.icon),
-      unparsedWhen: context.when,
-    });
+    if( context.group === "inline"){
+      actionBarMenu.push({
+        command: context.command,
+        title: command.title,
+        icon: command.icon,
+        iconClasses: await resolveIconClass(webview, command.icon),
+        unparsedWhen: context.when,
+      });
+    }else{
+      contextMenu.push({
+        command: context.command,
+        title: command.title,
+        icon: command.icon,
+        iconClasses: await resolveIconClass(webview, command.icon),
+        unparsedWhen: context.when,
+      });
+
+    }
   }
-  return menu;
+  return { actionBarMenu, contextMenu };
 }
 
 export async function loadIconTheme(webviewView: vscode.WebviewView, exts: readonly vscode.Extension<any>[], iconThemeId?: string | undefined) {
@@ -52,14 +64,21 @@ export async function loadIconTheme(webviewView: vscode.WebviewView, exts: reado
   const uriOnDisk = vscode.Uri.joinPath(activeIconTheme.uri, path.dirname(activeIconTheme.path));
   const uriOnWebview = webviewView.webview.asWebviewUri(uriOnDisk);
   const styleContent = await toStyleSheet(iconThemeData, uriOnWebview);
-  vscode.FileDecoration
   return {
     styleContent,
     uri: uriOnDisk,
   };
 }
 
-export async function toStyleSheet(iconThemeDocument: IconTheme, iconThemeBaseUri: vscode.Uri) {
+/**
+ * generate fileicon stylesheet content.
+ * 
+ * @export
+ * @param {IconTheme} iconThemeDocument
+ * @param {vscode.Uri} iconThemeBaseUri
+ * @return {*} 
+ */
+export async function toStyleSheet(iconThemeDocument: IconTheme, iconThemeBaseUri: vscode.Uri): Promise<any> {
   // XXX from https://github.com/microsoft/vscode/blob/14addc7735fcb99fd42c35e5d7e8e984611132b8/src/vs/workbench/services/themes/browser/fileIconThemeData.ts#L230C10-L230C3
   //
   const result = {
@@ -317,7 +336,7 @@ function escapeCSS(str: string) {
 }
 
 function cssEscape(value: any) {
-  if (arguments.length == 0) {
+  if (arguments.length === 0) {
     throw new TypeError("`CSS.escape` requires an argument.");
   }
   var string = String(value);
@@ -330,8 +349,8 @@ function cssEscape(value: any) {
   if (
     // If the character is the first character and is a `-` (U+002D), and
     // there is no second character, […]
-    length == 1 &&
-    firstCodeUnit == 0x002d
+    length === 1 &&
+    firstCodeUnit === 0x002d
   ) {
     return "\\" + string;
   }
@@ -343,7 +362,7 @@ function cssEscape(value: any) {
 
     // If the character is NULL (U+0000), then the REPLACEMENT CHARACTER
     // (U+FFFD).
-    if (codeUnit == 0x0000) {
+    if (codeUnit === 0x0000) {
       result += "\uFFFD";
       continue;
     }
@@ -352,13 +371,13 @@ function cssEscape(value: any) {
       // If the character is in the range [\1-\1F] (U+0001 to U+001F) or is
       // U+007F, […]
       (codeUnit >= 0x0001 && codeUnit <= 0x001f) ||
-      codeUnit == 0x007f ||
+      codeUnit === 0x007f ||
       // If the character is the first character and is in the range [0-9]
       // (U+0030 to U+0039), […]
-      (index == 0 && codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
+      (index === 0 && codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
       // If the character is the second character and is in the range [0-9]
       // (U+0030 to U+0039) and the first character is a `-` (U+002D), […]
-      (index == 1 && codeUnit >= 0x0030 && codeUnit <= 0x0039 && firstCodeUnit == 0x002d)
+      (index === 1 && codeUnit >= 0x0030 && codeUnit <= 0x0039 && firstCodeUnit === 0x002d)
     ) {
       // https://drafts.csswg.org/cssom/#escape-a-character-as-code-point
       result += "\\" + codeUnit.toString(16) + " ";
@@ -371,8 +390,8 @@ function cssEscape(value: any) {
     // U+005A), or [a-z] (U+0061 to U+007A), […]
     if (
       codeUnit >= 0x0080 ||
-      codeUnit == 0x002d ||
-      codeUnit == 0x005f ||
+      codeUnit === 0x002d ||
+      codeUnit === 0x005f ||
       (codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
       (codeUnit >= 0x0041 && codeUnit <= 0x005a) ||
       (codeUnit >= 0x0061 && codeUnit <= 0x007a)
@@ -389,9 +408,16 @@ function cssEscape(value: any) {
   return result;
 }
 
+/**
+ * resolve TreeIcon css classes. 
+ *
+ * @export
+ * @param {vscode.TreeItem} treeItem
+ * @return {*}  {Promise<string>} 
+ */
 export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise<string> {
   // from https://github.com/microsoft/vscode/blob/14addc7735fcb99fd42c35e5d7e8e984611132b8/src/vs/editor/common/services/getIconClasses.ts#L17
-  const fileIconDirectoryRegex = /(?:\/|^)(?:([^\/]+)\/)?([^\/]+)$/;
+  const fileIconDirectoryRegex = /(?:\/|^)(?:([^/]+)\/)?([^/]+)$/;
   function isThemeColor(obj: any): obj is vscode.ThemeColor {
     return obj && typeof obj === "object" && typeof (<any>obj).id === "string";
   }
@@ -441,7 +467,7 @@ export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise
     let name: string | undefined;
     if (resource.scheme === "data") {
       // data:MIME;a:AAA;b;BBB;base64,hhh scheme
-      const metadata = /^data:([^;]+;.*$)/.exec(resource.path) ?? [, ""];
+      const metadata = /^data:([^;]+;.*$)/.exec(resource.path) ?? [0, ""];
       name = metadata[1];
     } else {
       const match = resource.path.match(fileIconDirectoryRegex);
@@ -493,10 +519,10 @@ export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise
   return classes.join(" ");
 }
 
-let cache: Record<string,string>;
+let cache: Record<string, string>;
 let cachePattern: Record<string, Minimatch> = {};
 async function detectLanguageId(resource: vscode.Uri): Promise<string | undefined> {
-  const filesAssociations = cache || vscode.workspace.getConfiguration('files').get<Record<string,string>>('associations');
+  const filesAssociations = cache || vscode.workspace.getConfiguration('files').get<Record<string, string>>('associations');
   if (filesAssociations) {
     cache = filesAssociations;
     // const matcher = (bestMatch: [string, any], [pattern, langId]: [string, any]): [string, any] => {
@@ -506,23 +532,24 @@ async function detectLanguageId(resource: vscode.Uri): Promise<string | undefine
     //   return bestMatch;
     // };
     // const [pattern, langId] = Object.entries(filesAssociations).reduce(matcher, ["", undefined]);
-    const matched = Object.entries(filesAssociations).find(([pattern, langId])=>{
+    const matched = Object.entries(filesAssociations).find(([pattern, langId]) => {
       const matcher = cachePattern[pattern] || (cachePattern[pattern] = new Minimatch(pattern));
       return matcher.match(resource.path);
     });
     const langId = matched?.[1];
-    if( langId ){
+    if (langId) {
       return langId;
     }
   }
 
   try {
     // TODO: too slow
-    const document = await vscode.workspace.openTextDocument(resource);
-    return document.languageId;
+    // const document = await vscode.workspace.openTextDocument(resource);
+    // return document.languageId;
   } catch (e) {
-    return "binary";
+    // 
   }
+  return "binary";
 }
 
 export async function resolveIconClass(webview: vscode.Webview, icon: VscodeContributesCommandsIconDefinition): Promise<string> {

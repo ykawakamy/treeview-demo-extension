@@ -1,20 +1,25 @@
 import ReactDOM from "react-dom/client";
 import { VsccTreeView } from "./treeview";
+import { StrictMode } from "react";
 
 const container = document.getElementById('root')!;
 const root = ReactDOM.createRoot(container);
 
 root.render(
-  <div>
+  <StrictMode>
     <div>
-      It's TreeView on webview
-      <input type="text"/>
+      TreeView on webview
+      <input type="text" />
     </div>
-    <div style={{"height": "80vh", "overflowY":"scroll"}}>
+    <div style={{ "height": "40vh", "overflowY": "scroll" }}>
+      
       <VsccTreeView viewId={"treeviewDemo"}></VsccTreeView>
     </div>
-    <div>
-      It's TreeView on webview
+    <div style={{ "height": "40vh", "overflowY": "scroll" }}>
+      <VsccTreeView viewId={"treeviewDemo2"}></VsccTreeView>
     </div>
-  </div>
+    <div>
+      TreeView on webview
+    </div>
+  </StrictMode>
 );

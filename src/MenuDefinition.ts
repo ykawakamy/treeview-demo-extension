@@ -2,7 +2,8 @@ import { VscodeContributesCommandsIconDefinition, VscodeContributesIconDefinitio
 import { VirtualTreeItem } from "./TreeViewContext";
 
 export interface MenuDefinition {
-  menu: Menu[];
+  actionBarMenu: Menu[];
+  contextMenu: Menu[];
 }
 
 export interface VscodePackageJSON {
@@ -13,6 +14,7 @@ export interface VscodePackageJSON {
 }
 export interface ManifestMenus {
   "view/item/context": ManifestViewItemContext[];
+  "webview/context": ManifestViewItemContext[];
 }
 
 /**

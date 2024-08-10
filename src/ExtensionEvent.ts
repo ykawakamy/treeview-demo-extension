@@ -1,4 +1,4 @@
-import { MenuDefinition } from "MenuDefinition";
+import { TreeItemCollapsibleState } from "webview/treeviewitem";
 
 
 export type VirtualTreeId = number | undefined;
@@ -9,9 +9,13 @@ export type VirtualTreeId = number | undefined;
 export type TreeViewContextEvent =
   | TreeViewContextCompleteLoadedEvent
   | TreeViewContextTreeItemEvent
+  | TreeViewContextCommandByActionEvent
   | TreeViewContextCommandEvent
   ;
 
+export interface TreeViewContextBaseEvent{
+  viewId: string;
+}
 export interface TreeViewContextCompleteLoadedEvent {
   type: "componentLoaded";
 }
@@ -19,10 +23,20 @@ export interface TreeViewContextCompleteLoadedEvent {
 export interface TreeViewContextTreeItemEvent {
   type: "hoverItem" | "clickItem";
   index: VirtualTreeId;
+  collapsibleState?: TreeItemCollapsibleState;
+}
+
+export interface TreeViewContextCommandByActionEvent {
+  type: "commandByAction";
+  index: VirtualTreeId;
+  command: string;
 }
 
 export interface TreeViewContextCommandEvent {
   type: "command";
   index: VirtualTreeId;
-  command: string;
+}
+
+export interface TreeViewContextMenuEvent {
+  index: VirtualTreeId;
 }

@@ -305,6 +305,7 @@ export class FileSystemProvider implements vscode.TreeDataProvider<Entry>, vscod
 		if (element.type === vscode.FileType.File) {
 			treeItem.command = { command: 'fileExplorer.openFile', title: "Open File", arguments: [element.uri], };
 			treeItem.contextValue = 'file';
+			treeItem.description = "true";
 		}else{
 			treeItem.command = { command: 'fileExplorer.openDir', title: "Open File", arguments: [element.uri], };
 			treeItem.contextValue = 'folder';

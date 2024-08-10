@@ -16,12 +16,12 @@
       "explorer": [
         {
           "type": "webview",
-          "id": "treeviewDemo",
+          "id": "treeviewOnWebview",
           "name": "treeview on webview"
         },
         {
-          "id": "treeviewDemo1",
-          "name": "treeviewDemo1"
+          "id": "realTreeview",
+          "name": "realTreeview"
         }
       ]
     },
@@ -60,6 +60,16 @@
         "command": "vscode-webview-treeview.isFolder",
         "title": "is folder",
         "icon": "$(file-folder)"
+      },
+      {
+        "command": "treeviewWrap:vscode-webview-treeview.isFile",
+        "title": "is file(wrapped)",
+        "icon": "$(file)"
+      },
+      {
+        "command": "treeviewWrap:vscode-webview-treeview.isFolder",
+        "title": "is folder(wrapped)",
+        "icon": "$(file-folder)"
       }
     ],
     "menus": {
@@ -71,26 +81,32 @@
         },
         {
           "command": "vscode-webview-treeview.isFolder",
-          "when": "view == treeviewDemo && viewItem == querySearch.result && querysearch.replaceMode == true",
+          "when": "view == treeviewDemo && viewItem == folder",
           "group": "inline"
         },
         {
           "command": "vscode-webview-treeview.openFile",
-          "when": "view == treeviewDemo",
+          "when": "view == treeviewDemo"
+        },
+
+
+
+        {
+          "command": "vscode-webview-treeview.isFile",
+          "when": "view == realTreeview && viewItem == file",
+          "group": "inline"
+        },
+        {
+          "command": "vscode-webview-treeview.isFolder",
+          "when": "view == realTreeview && viewItem == folder",
           "group": "inline"
         },
         {
           "command": "vscode-webview-treeview.openFile",
-          "when": "view == treeviewDemo1",
-          "group": "inline"
+          "when": "view == realTreeview"
         }
       ],
       "view/title": [
-        {
-          "command": "vscode-webview-treeview.openFile",
-          "when": "view == treeviewDemo1",
-          "group": "navigation"
-        },
         {
           "command": "vscode-webview-treeview.refresh",
           "when": "view == treeviewDemo",
@@ -98,8 +114,26 @@
         },
         {
           "command": "vscode-webview-treeview.refresh2",
-          "when": "view == treeviewDemo1",
+          "when": "view == realTreeview",
           "group": "navigation"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "vscode-webview-treeview.isFile",
+          "when": "webviewId == treeviewOnWebview && view == treeviewDemo && viewItem == file"
+        },
+        {
+          "command": "vscode-webview-treeview.isFolder",
+          "when": "webviewId == treeviewOnWebview && view == treeviewDemo && viewItem == folder"
+        },
+        {
+          "command": "treeviewWrap:vscode-webview-treeview.isFile",
+          "when": "webviewId == treeviewOnWebview && view == treeviewDemo && viewItem == file"
+        },
+        {
+          "command": "treeviewWrap:vscode-webview-treeview.isFolder",
+          "when": "webviewId == treeviewOnWebview && view == treeviewDemo && viewItem == folder"
         }
       ]
     }
@@ -142,6 +176,8 @@
     "@react-hook/event": "^1.2.6",
     "@types/vscode-webview": "^1.57.5",
     "@vscode/codicons": "^0.0.36",
+    "eslint-plugin-promise": "^7.1.0",
+    "eslint-plugin-react": "^7.35.0",
     "minimatch": "^10.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

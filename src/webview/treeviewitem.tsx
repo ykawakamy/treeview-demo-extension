@@ -1,14 +1,14 @@
-import { vscode } from "./vscode-wrapper";
-import {  VirtualTreeItem } from "../TreeViewContext";
-import { DOMAttributes, memo, MouseEventHandler } from "react";
-import { Menu, MenuDefinition } from "MenuDefinition";
+import useEvent from "@react-hook/event";
 import { VirtualTreeId } from "ExtensionEvent";
+import { Menu, MenuDefinition } from "MenuDefinition";
+import { memo, useRef } from "react";
+import { VirtualTreeItem } from "../TreeViewContext";
 import { postMessageToExtension } from "./WebViewTreeViewContext";
 export interface VsccTreeViewItemProp {
   item: VirtualTreeItem;
   isSelected: boolean;
   menuDefinition: MenuDefinition;
-  viewId?: string;
+  viewId: string;
   onSelect: (id: VirtualTreeId) => void;
 }
 
@@ -28,33 +28,40 @@ export enum TreeItemCollapsibleState {
 }
 
 const INDENT_PX = 8;
-export const VsccTreeViewItem = memo( (prop: VsccTreeViewItemProp)=> VsccTreeViewItemInner(prop));
-export const VsccTreeViewItemInner = (prop: VsccTreeViewItemProp)=>{
+export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTreeViewItemProp) {
   console.log("VsccTreeViewItem");
-  /**
-   * onClick 
-   */
-  function onClickItem(item: VirtualTreeItem) {
-    prop.onSelect(item.index);
+
+  function onClickTwistle() {
     switch (item.collapsibleState) {
       case TreeItemCollapsibleState.Collapsed:
+        postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Expanded });
+        break;
       case TreeItemCollapsibleState.Expanded:
-        postMessageToExtension({ type: "clickItem", index: item.index });
+        postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Collapsed });
         break;
     }
+  }
+
+  function onClickItem() {
+    prop.onSelect(item.index);
+    if (item.command) {
+      postMessageToExtension(prop.viewId, { type: "command", index: item.index });
+      return;
+    }
+    onClickTwistle();
   }
   let hoverDelay: any;
   function onHoverItem(item: VirtualTreeItem) {
     clearTimeout(hoverDelay);
     hoverDelay = setTimeout(() => {
-      postMessageToExtension({ type: "hoverItem", index: item.index });
+      postMessageToExtension(prop.viewId, { type: "hoverItem", index: item.index });
     }, 300);
   }
   function onUnhoverItem(prop: VirtualTreeItem) {
     clearTimeout(hoverDelay);
   }
-  function onAction(menu: Menu, item: VirtualTreeItem, ){
-    postMessageToExtension({type: "command", command: menu.command, index: item.index});
+  function onAction(menu: Menu, item: VirtualTreeItem,) {
+    postMessageToExtension(prop.viewId, { type: "commandByAction", command: menu.command, index: item.index });
   }
   const item = prop.item;
   function basename(path: string) {
@@ -83,46 +90,81 @@ export const VsccTreeViewItemInner = (prop: VsccTreeViewItemProp)=>{
   };
   const label = convertLabel(item);
   const description = convertDescription(item);
-  const indent = item.indent * INDENT_PX;
+  const indent = item.indent - 1;
   const twistableIconMap = {
-    [1 /*TreeItemCollapsibleState.Collapsed*/]: "codicon-chevron-right",
-    [2 /*TreeItemCollapsibleState.Expanded*/]: "codicon-chevron-down",
-    [0 /*TreeItemCollapsibleState.None*/]: "test",
+    [TreeItemCollapsibleState.Collapsed]: "treeview-item-twist-toggle-show codicon-chevron-right",
+    [TreeItemCollapsibleState.Expanded]: "treeview-item-twist-toggle-show codicon-chevron-down",
+    [TreeItemCollapsibleState.None]: "",
   };
   const twistableIcon = twistableIconMap[item.collapsibleState ?? 0 /*TreeItemCollapsibleState.None*/];
   const resourceIcon = item.iconClasses;
   // !!item.resourceUri ? "file-icon" : "";
 
-  const events: DOMAttributes<HTMLDivElement> = {
-
-  };
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEvent(inputRef, "keydown", (e) => {
+    switch (e.code) {
+      case "ArrowLeft":
+        if (item.collapsibleState === TreeItemCollapsibleState.Expanded) {
+          postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Collapsed });
+        }
+        break;
+      case "ArrowRight":
+        if (item.collapsibleState === TreeItemCollapsibleState.Collapsed) {
+          postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Expanded });
+        }
+        break;
+      case "Space":
+        if (item.collapsibleState === TreeItemCollapsibleState.None) {
+          onClickItem();
+        }else{
+          onClickTwistle();
+        }
+        break;
+      case "Enter":
+        onClickItem();
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+  });
+  const indentBar = new Array(indent).fill(0).map((v,i)=>{
+    return <div key={i} className="treeview-item-indent-guide"></div>;
+  });
   return (
     <>
       <div className={"treeview-item-row show-file-icons " + (prop.isSelected ? "selected" : "")}
-        onMouseOver={ () => onHoverItem(item)}
-        onMouseOut={ () => onUnhoverItem(item)}
+        data-vscode-context={JSON.stringify({viewItem: item.contextValue, index: item.index})}
+        onMouseOver={() => onHoverItem(item)}
+        onMouseOut={() => onUnhoverItem(item)}
+        data-xxx-tooltip={item.resourceUri?.fsPath ?? ""}
       >
-        <div className="treeview-item-indent" style={{ width: indent }}></div>
-        <div className={"treeview-item-twist-toggle codicon " + twistableIcon}></div>
-        <div className={"treeview-item-icon-container " + resourceIcon}
-            onClick={ (e) => {
-              onClickItem(item);
-            }}
-        >
-          <span className="treeview-item-label-container">{label}</span>
-          <span className="treeview-item-describe-container">{description}</span>
+        <div className="treeview-item-indent" style={{ width: indent * INDENT_PX }}>
+          {indentBar}
         </div>
-        <div className="treeview-item-actionbar" data-vscode-context={item.contextValue}>
-          {prop.menuDefinition.menu.filter(x => {
-            if (x.when) {
-              return x.when.expr(item, { view: prop.viewId });
-            }
-            return true;
-          }).map(action => {
-            return <div key={action.command} className={`treeview-item-actionbar-item ${action.iconClasses}`} onClick={()=>{onAction(action, item);}}></div>;
-          })}
-        </div>
+        <div className={"treeview-item-twist-toggle codicon " + twistableIcon}
+          onClick={onClickTwistle}
+        ></div>
+        <label className="treeview-item-container">
+          <input ref={inputRef} type="radio" name={prop.viewId} className="treeview-item-row-focus" />
+          <div className={"treeview-item-icon-container " + resourceIcon}
+            onClick={onClickItem}
+          >
+            <span className="treeview-item-label-container">{label}</span>
+            <span className="treeview-item-describe-container">{description}</span>
+          </div>
+          <div className="treeview-item-actionbar">
+            {prop.menuDefinition.actionBarMenu.filter(x => {
+              if (x.when) {
+                return x.when.expr(item, { view: prop.viewId });
+              }
+              return true;
+            }).map(action => {
+              return <div key={action.command} className={`treeview-item-actionbar-item ${action.iconClasses}`} onClick={() => { onAction(action, item); }}></div>;
+            })}
+          </div>
+        </label>
       </div>
     </>
   );
-}
+});

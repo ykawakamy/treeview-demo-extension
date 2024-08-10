@@ -1,35 +1,71 @@
 body {
-  padding-left: 10px;
+  padding-left: 0px;
   padding-right: 0px;
 }
-
 .treeview-item-row {
   display: flex;
-  align-items: center;
+
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .treeview-item-row:hover {
   background-color: var(--vscode-list-hoverBackground);
 }
 
+.treeview-item-row:focus-within{
+  outline: 1px solid var(--vscode-list-focusAndSelectionOutline, var(--vscode-contrastActiveBorder, var(--vscode-list-focusOutline)));
+  outline-offset: -1px;
+}
+
+.treeview:focus-within .treeview-item-row.selected{
+  background-color: var(--vscode-list-activeSelectionBackground);
+}
+
+.treeview-item-row-focus{
+  position: absolute;
+  opacity: 0.001;
+}
+
 .treeview-item-row.selected {
   background-color: var(--vscode-list-inactiveSelectionBackground);
 }
 
-.treeview-item-row.selected.focused {
-  background-color: var(--vscode-list-activeSelectionBackground);
+.treeview-item-indent {
+  display: flex;
+  padding-left:8px;
+}
+.treeview-item-indent-guide {
+  border-right: 1px solid var(--vscode-tree-indentGuidesStroke);
+  box-sizing: border-box;
+  display: inline-block;
+  height: 100%;
+  padding-left: 7px;
+}
+.treeview-item-twist-toggle.treeview-item-twist-toggle-show{
+  padding-left: 3px;
+  padding-right: 6px;
+  display: flex;
+  align-items: center;
 }
 
-.treeview-item-row-indent {
-  display: block;
+.treeview-item-container{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
-
-.treeview-item-twist-toggle {}
 
 .treeview-item-icon-container {
   flex: 1;
   display: flex;
   line-height: 22px;
+  width: 22px;
+  overflow: hidden;
+}
+
+.treeview-item-icon-container::before {
+  width: 22px;
   overflow: hidden;
 }
 
@@ -39,7 +75,13 @@ body {
 }
 
 .treeview-item-describe-container {
-  flex: 0;
+  flex: 1;
+  font-size: .9em;
+  margin-left: .5em;
+  opacity: .7;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .treeview-item-row:hover .treeview-item-actionbar {
@@ -64,4 +106,42 @@ body {
   outline: 1px dashed var(--vscode-toolbar-hoverOutline);
   outline-offset: -1px;
   background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+[data-xxx-tooltip]{
+  position: relative;
+}
+[data-xxx-tooltip]:hover::after {
+  content: attr(data-xxx-tooltip);
+  position: absolute;
+  left: 0;
+  top: 24px;
+  min-width: 200px;
+  max-width: 95vw;
+  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: break-word;
+  
+  z-index: 1;
+
+  box-sizing: border-box;
+  padding: 2px;
+
+  background-color: var(--vscode-editorHoverWidget-background);
+  border: 1px solid var(--vscode-editorHoverWidget-border);
+  border-radius: 3px;
+  color: var(--vscode-editorHoverWidget-foreground);
+
+  animation: 0.1s linear  0.5s fadeInAnime forwards;
+  opacity:0;
+}
+
+@keyframes fadeInAnime{
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

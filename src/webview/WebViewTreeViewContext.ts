@@ -1,12 +1,14 @@
-import { createContext } from "react";
+import { createContext, useContext } from "react";
 import { vscode } from "./vscode-wrapper";
-import { TreeViewContextEvent } from "ExtensionEvent";
+import { TreeViewContextBaseEvent, TreeViewContextEvent } from "ExtensionEvent";
 
 
-export const TreeviewContext = createContext({
+export interface WebviewTreeviewContextType{
+  viewId?: string;
+}
 
-});
+// export const WebviewTreeviewContext = createContext<WebviewTreeviewContextType>({});
 
-export function postMessageToExtension(message: TreeViewContextEvent){
-  vscode.postMessage(message);
+export function postMessageToExtension(viewId: string, message: TreeViewContextEvent){
+  vscode.postMessage<TreeViewContextEvent & TreeViewContextBaseEvent>({viewId: viewId!, ...message});
 }
