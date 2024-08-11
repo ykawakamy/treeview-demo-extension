@@ -1,14 +1,13 @@
 import useEvent from "@react-hook/event";
 import { VirtualTreeId } from "ExtensionEvent";
 import { Menu, MenuDefinition } from "MenuDefinition";
-import { memo, useRef } from "react";
-import { VirtualTreeItem } from "../TreeViewContext";
-import { postMessageToExtension } from "./WebViewTreeViewContext";
+import { memo, useContext, useDebugValue, useRef } from "react";
+import { VirtualTreeItem } from "../TreeviewOnWebviewProvider";
+import { postMessageToExtension, WebviewTreeviewContext } from "./WebViewTreeViewContext";
 export interface VsccTreeViewItemProp {
   item: VirtualTreeItem;
   isSelected: boolean;
-  menuDefinition: MenuDefinition;
-  viewId: string;
+
   onSelect: (id: VirtualTreeId) => void;
 }
 
@@ -29,23 +28,25 @@ export enum TreeItemCollapsibleState {
 
 const INDENT_PX = 8;
 export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTreeViewItemProp) {
-  console.log("VsccTreeViewItem");
+  useDebugValue( console.log("VsccTreeViewItem"));
 
+  const { viewId, menuDefinition } = useContext(WebviewTreeviewContext);  
+  const actionBarMenu = menuDefinition.actionBarMenu;
   function onClickTwistle() {
     switch (item.collapsibleState) {
       case TreeItemCollapsibleState.Collapsed:
-        postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Expanded });
+        postMessageToExtension(viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Expanded });
         break;
       case TreeItemCollapsibleState.Expanded:
-        postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Collapsed });
+        postMessageToExtension(viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Collapsed });
         break;
     }
   }
 
   function onClickItem() {
     prop.onSelect(item.index);
-    if (item.command) {
-      postMessageToExtension(prop.viewId, { type: "command", index: item.index });
+    if (item.hasCommand) {
+      postMessageToExtension(viewId, { type: "command", index: item.index });
       return;
     }
     onClickTwistle();
@@ -54,14 +55,14 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
   function onHoverItem(item: VirtualTreeItem) {
     clearTimeout(hoverDelay);
     hoverDelay = setTimeout(() => {
-      postMessageToExtension(prop.viewId, { type: "hoverItem", index: item.index });
+      postMessageToExtension(viewId, { type: "hoverItem", index: item.index });
     }, 300);
   }
   function onUnhoverItem(prop: VirtualTreeItem) {
     clearTimeout(hoverDelay);
   }
   function onAction(menu: Menu, item: VirtualTreeItem,) {
-    postMessageToExtension(prop.viewId, { type: "commandByAction", command: menu.command, index: item.index });
+    postMessageToExtension(viewId, { type: "commandByAction", command: menu.command, index: item.index });
   }
   const item = prop.item;
   function basename(path: string) {
@@ -70,9 +71,6 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
   }
   const convertLabel = (item: VirtualTreeItem) => {
     const label = item.label;
-    if (!label) {
-      return basename(item.resourceUri?.path ?? "");
-    }
     if (typeof label === "string") {
       return label;
     }
@@ -80,9 +78,6 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
   };
   const convertDescription = (item: VirtualTreeItem) => {
     const description = item.description;
-    if (description === true) {
-      return item.resourceUri?.path;
-    }
     if (typeof description === "string") {
       return description;
     }
@@ -105,12 +100,12 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
     switch (e.code) {
       case "ArrowLeft":
         if (item.collapsibleState === TreeItemCollapsibleState.Expanded) {
-          postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Collapsed });
+          postMessageToExtension(viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Collapsed });
         }
         break;
       case "ArrowRight":
         if (item.collapsibleState === TreeItemCollapsibleState.Collapsed) {
-          postMessageToExtension(prop.viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Expanded });
+          postMessageToExtension(viewId, { type: "clickItem", index: item.index, collapsibleState: TreeItemCollapsibleState.Expanded });
         }
         break;
       case "Space":
@@ -137,7 +132,7 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
         data-vscode-context={JSON.stringify({viewItem: item.contextValue, index: item.index})}
         onMouseOver={() => onHoverItem(item)}
         onMouseOut={() => onUnhoverItem(item)}
-        data-xxx-tooltip={item.resourceUri?.fsPath ?? ""}
+        data-xxx-tooltip={item.tooltip ?? ""}
       >
         <div className="treeview-item-indent" style={{ width: indent * INDENT_PX }}>
           {indentBar}
@@ -146,7 +141,7 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
           onClick={onClickTwistle}
         ></div>
         <label className="treeview-item-container">
-          <input ref={inputRef} type="radio" name={prop.viewId} className="treeview-item-row-focus" />
+          <input ref={inputRef} type="radio" name={viewId} className="treeview-item-row-focus" />
           <div className={"treeview-item-icon-container " + resourceIcon}
             onClick={onClickItem}
           >
@@ -154,9 +149,9 @@ export const VsccTreeViewItem = memo(function VsccTreeViewItemInner(prop: VsccTr
             <span className="treeview-item-describe-container">{description}</span>
           </div>
           <div className="treeview-item-actionbar">
-            {prop.menuDefinition.actionBarMenu.filter(x => {
+            {actionBarMenu.filter(x => {
               if (x.when) {
-                return x.when.expr(item, { view: prop.viewId });
+                return x.when.expr(item, { view: viewId });
               }
               return true;
             }).map(action => {

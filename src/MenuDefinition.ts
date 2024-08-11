@@ -1,5 +1,5 @@
 import { VscodeContributesCommandsIconDefinition, VscodeContributesIconDefinition } from "IconTheme";
-import { VirtualTreeItem } from "./TreeViewContext";
+import { VirtualTreeItem } from "./TreeviewOnWebviewProvider";
 
 export interface MenuDefinition {
   actionBarMenu: Menu[];

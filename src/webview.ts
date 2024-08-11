@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { TreeviewOnWebviewProvider } from "./TreeViewContext";
+import { TreeviewOnWebviewProvider } from "./TreeviewOnWebviewProvider";
 import { TreeviewProvider } from "./TreeViewProvider";
 import path from "path";
 import { IconTheme } from "./IconTheme";

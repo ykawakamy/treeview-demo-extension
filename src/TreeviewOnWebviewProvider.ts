@@ -3,23 +3,34 @@ import * as vscode from "vscode";
 import { VsccTreeViewEvent } from "webview/WebViewEvent";
 import { loadContributesMenu, resolveTreeIconClasses } from "./ContributesUtil";
 import { MenuDefinition } from "./MenuDefinition";
+import { MarkdownString, TreeItem, TreeItemLabel } from "vscode";
+import { TreeItemCollapsibleState } from "webview/treeviewitem";
+import path from "path";
 
-export interface VirtualTreeItem extends vscode.TreeItem {
+export interface VirtualTreeItem {
   index: VirtualTreeId;
   parentId?: VirtualTreeId;
   indent: number;
   iconClasses: string;
+  // -- TreeItem 
+  label: string | TreeItemLabel;
+  description: string | boolean;
+  tooltip: string | MarkdownString | undefined;
+  collapsibleState?: TreeItemCollapsibleState;
+  hasCommand: boolean;
+  contextValue: string;
 }
 
 export class TreeviewOnWebviewProvider<T extends object> {
   webviewView!: vscode.WebviewView;
   realItemFromId: Map<VirtualTreeId, T> = new Map<VirtualTreeId, T>();
+  treeItemFromId: Map<VirtualTreeId, TreeItem> = new Map<VirtualTreeId, TreeItem>();
   virtualItemFromId: Map<VirtualTreeId, VirtualTreeItem> = new Map<VirtualTreeId, VirtualTreeItem>();
   treeItemhandles: Map<T, VirtualTreeItem> = new Map<T, VirtualTreeItem>();
   treeItems: Map<VirtualTreeId, VirtualTreeItem[]> = new Map<VirtualTreeId, VirtualTreeItem[]>();
   latestIds = 1;
   root = {} as T;
-  menu: MenuDefinition = { actionBarMenu: [], contextMenu:[] };
+  menu: MenuDefinition = { actionBarMenu: [], contextMenu: [] };
   CommandPrefix: string = "treeviewWrap";
 
   constructor(private context: vscode.ExtensionContext, private provider: vscode.TreeDataProvider<T>, private viewId: string) {
@@ -27,10 +38,11 @@ export class TreeviewOnWebviewProvider<T extends object> {
     context.subscriptions.push(
       onDidChange((listener: void | T | T[] | null | undefined): void => {
         if (!listener) {
-          this.realItemFromId = new Map<VirtualTreeId, T>();
-          this.virtualItemFromId = new Map<VirtualTreeId, VirtualTreeItem>();
-          this.treeItemhandles = new Map<T, VirtualTreeItem>();
-          this.treeItems = new Map<VirtualTreeId, VirtualTreeItem[]>();
+          this.realItemFromId = new Map();
+          this.treeItemFromId = new Map();
+          this.virtualItemFromId = new Map();
+          this.treeItemhandles = new Map();
+          this.treeItems = new Map();
           this.latestIds = 1;
           this.refresh();
         } else {
@@ -42,6 +54,7 @@ export class TreeviewOnWebviewProvider<T extends object> {
             if (virutalItem) {
               const virtualId = virutalItem.index;
               this.realItemFromId.delete(virtualId);
+              this.treeItemFromId.delete(virtualId);
               this.virtualItemFromId.delete(virtualId);
               this.treeItemhandles.delete(realItem);
               this.treeItems.delete(virtualId);
@@ -60,7 +73,7 @@ export class TreeviewOnWebviewProvider<T extends object> {
 
     this.context.subscriptions.push(
       this.webviewView.webview.onDidReceiveMessage(async (event: TreeViewContextEvent & TreeViewContextBaseEvent) => {
-        if( event.viewId !== this.viewId){
+        if (event.viewId !== this.viewId) {
           return;
         }
         switch (event.type) {
@@ -86,7 +99,7 @@ export class TreeviewOnWebviewProvider<T extends object> {
   }
   onCommand(event: TreeViewContextCommandEvent) {
     const id = event.index;
-    const item = this.virtualItemFromId.get(id);
+    const item = this.treeItemFromId.get(id);
     if (!item || !item.command) {
       return;
     }
@@ -211,7 +224,7 @@ export class TreeviewOnWebviewProvider<T extends object> {
     }
   }
 
-  private async getVirtualTreeItem(realItem: T, parentId: VirtualTreeId | undefined, indent: number) {
+  private async getVirtualTreeItem(realItem: T, parentId: VirtualTreeId | undefined, indent: number): Promise<VirtualTreeItem> {
     const virtualItem = this.treeItemhandles.get(realItem);
     if (virtualItem !== undefined) {
       return virtualItem;
@@ -219,14 +232,27 @@ export class TreeviewOnWebviewProvider<T extends object> {
     const treeItem = await asPromise<vscode.TreeItem>(this.provider.getTreeItem(realItem));
     const iconClasses = await resolveTreeIconClasses(treeItem);
     const id = this.latestIds++;
-    const newVirtualItem = {
-      ...treeItem,
+    const description = treeItem.description
+      ? typeof treeItem.description === "string" ? treeItem.description : treeItem.resourceUri?.fsPath ?? ""
+      : "";
+    function basename(fsPath?: string) {
+      if (!fsPath) { return fsPath; }
+      return path.basename(fsPath);
+    }
+    const newVirtualItem: VirtualTreeItem = {
       index: id,
       parentId: parentId,
       indent: indent,
       iconClasses,
+      hasCommand: !!treeItem.command,
+      label: treeItem.label ?? basename(treeItem.resourceUri?.fsPath) ?? "",
+      description: description,
+      tooltip: treeItem.tooltip ?? treeItem.resourceUri?.fsPath ?? "",
+      collapsibleState: treeItem.collapsibleState,
+      contextValue: treeItem.contextValue!,
     };
     this.realItemFromId.set(id, realItem);
+    this.treeItemFromId.set(id, treeItem);
     this.virtualItemFromId.set(id, newVirtualItem);
     this.treeItemhandles.set(realItem, newVirtualItem);
     return newVirtualItem;
@@ -235,17 +261,17 @@ export class TreeviewOnWebviewProvider<T extends object> {
   async loadContributesMenu(extension: vscode.Extension<any>) {
     const menu = await loadContributesMenu(this.webviewView.webview, extension);
     this.menu.actionBarMenu.push(...menu.actionBarMenu);
-    this.menu.contextMenu.push(...menu.contextMenu.map(contextMenu=>({
+    this.menu.contextMenu.push(...menu.contextMenu.map(contextMenu => ({
       ...contextMenu,
-      unparsedWhen: `webviewId == ${ this.viewId } && ( ${contextMenu.unparsedWhen }) `
+      unparsedWhen: `webviewId == ${this.viewId} && ( ${contextMenu.unparsedWhen}) `
     })));
   }
 
-  async registerCommand(command: string, callback?: (...args: any[]) => any, thisArg?: any, subscriptions: any[] = []){
-    if(callback){
+  async registerCommand(command: string, callback?: (...args: any[]) => any, thisArg?: any, subscriptions: any[] = []) {
+    if (callback) {
       subscriptions.push(vscode.commands.registerCommand(command, callback));
     }
-    subscriptions.push(vscode.commands.registerCommand( this.CommandPrefix+":"+command, (event: TreeViewContextMenuEvent) => {
+    subscriptions.push(vscode.commands.registerCommand(this.CommandPrefix + ":" + command, (event: TreeViewContextMenuEvent) => {
       const id = event.index;
       const item = this.realItemFromId.get(id);
       if (!item) {

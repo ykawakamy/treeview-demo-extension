@@ -1,6 +1,6 @@
 import { VirtualTreeId } from "ExtensionEvent";
 import { MenuDefinition } from "MenuDefinition";
-import { VirtualTreeItem } from "TreeViewContext";
+import { VirtualTreeItem } from "TreeviewOnWebviewProvider";
 
 export type VsccTreeViewEvent = VsccTreeViewItemEvent | VsccTreeViewMenuDefinitionEvent;
 export type VsccTreeViewEventWithViewId = VsccTreeViewEvent & VsccTreeViewBaseEvent;

@@ -1,25 +1,24 @@
 import useEvent from "@react-hook/event";
 import { MenuDefinition } from "MenuDefinition";
-import { useEffect, useState } from "react";
+import { useContext, useDebugValue, useEffect, useState } from "react";
 import { VirtualTreeId } from "../ExtensionEvent";
-import VirtualTreeItem from "../TreeViewContext";
+import { VirtualTreeItem } from "../TreeviewOnWebviewProvider";
 import { TreeItemCollapsibleState, VsccTreeViewItem } from "./treeviewitem";
 import { VsccTreeViewEventWithViewId, VsccTreeViewItemEvent } from "./WebViewEvent";
-import { postMessageToExtension } from "./WebViewTreeViewContext";
+import { postMessageToExtension, WebviewTreeviewContext } from "./WebViewTreeViewContext";
 import { parseWhenClause } from "./WhenClauseParser";
 
 export interface VsccTreeViewProp {
-  viewId: string;
 }
 
 export function VsccTreeView(prop: VsccTreeViewProp) {
-  console.log("VsccTreeView");
+  useDebugValue( console.log("VsccTreeView"));
+  const { viewId, setMenuDefinition } = useContext(WebviewTreeviewContext);  
   const [selectedId, setSelectedId] = useState<VirtualTreeId>(undefined);
   const [treeItems, setTreeItems] = useState<VirtualTreeItem[]>([]);
-  const [menuDefinition, setMenuDefinition] = useState<MenuDefinition>({actionBarMenu:[], contextMenu:[]});
   useEvent(window, "message", (e: MessageEvent<VsccTreeViewEventWithViewId>) => {
     const message = e.data;
-    if( message.viewId !== prop.viewId){
+    if( message.viewId !== viewId){
       return;
     }
     console.log(`${message.viewId}: ${message.type} `);
@@ -77,16 +76,14 @@ export function VsccTreeView(prop: VsccTreeViewProp) {
     setTreeItems(clone);
   }
   useEffect(() => {
-    postMessageToExtension(prop.viewId, { type: "componentLoaded" });
+    postMessageToExtension(viewId, { type: "componentLoaded" });
   }, []);
 
   return (
-    <div className="treeview" data-vscode-context={`{"view":"${prop.viewId}", "preventDefaultContextMenuItems": true}`}>
+    <div className="treeview" data-vscode-context={`{"view":"${viewId}", "preventDefaultContextMenuItems": true}`}>
       {treeItems.map((x) => {
         return <VsccTreeViewItem 
           item={x} 
-          menuDefinition = {menuDefinition}
-          viewId={prop.viewId}
           key={x.index} 
           isSelected={selectedId=== x.index}
           onSelect={setSelectedId} />;
