@@ -11,5 +11,7 @@ Treeview on webview.
 
 1. `npm i`
 
-2. vsocde > run and debug > Run Extension
+2. Run and debug > Run Extension
 
+3. File > Open folder`, if isn't open workspace.
+ 

@@ -19,9 +19,9 @@ export class DemoWebview implements vscode.WebviewViewProvider {
     
     // const provider = new TreeviewProvider<any>();
     const provider = new FileSystemProvider();
-    this.treeContext = new TreeviewOnWebviewProvider(context, provider, "treeviewDemo");
+    this.treeContext = new TreeviewOnWebviewProvider(context, provider, "treeviewDemo", true);
     const provider2 = new FileSystemProvider();
-    this.treeContext2 = new TreeviewOnWebviewProvider(context, provider2, "treeviewDemo2");
+    this.treeContext2 = new TreeviewOnWebviewProvider(context, provider2, "treeviewDemo2", false);
     context.subscriptions.push(vscode.window.registerWebviewViewProvider(DemoWebview.treeviewOnWebviewId, this));
     const provider3 = new FileSystemProvider();
     context.subscriptions.push(vscode.window.createTreeView(DemoWebview.realTreeviewId, { treeDataProvider: provider3 }));

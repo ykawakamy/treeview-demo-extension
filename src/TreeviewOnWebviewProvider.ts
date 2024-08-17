@@ -33,7 +33,7 @@ export class TreeviewOnWebviewProvider<T extends object> {
   menu: MenuDefinition = { actionBarMenu: [], contextMenu: [] };
   CommandPrefix: string = "treeviewWrap";
 
-  constructor(private context: vscode.ExtensionContext, private provider: vscode.TreeDataProvider<T>, private viewId: string) {
+  constructor(private context: vscode.ExtensionContext, private provider: vscode.TreeDataProvider<T>, private viewId: string, private isUseVscodeOpenTextDocument: boolean) {
     const onDidChange = provider.onDidChangeTreeData!;
     context.subscriptions.push(
       onDidChange((listener: void | T | T[] | null | undefined): void => {
@@ -230,7 +230,7 @@ export class TreeviewOnWebviewProvider<T extends object> {
       return virtualItem;
     }
     const treeItem = await asPromise<vscode.TreeItem>(this.provider.getTreeItem(realItem));
-    const iconClasses = await resolveTreeIconClasses(treeItem);
+    const iconClasses = await resolveTreeIconClasses(treeItem, {isUseVscodeOpenTextDocument :this.isUseVscodeOpenTextDocument});
     const id = this.latestIds++;
     const description = treeItem.description
       ? typeof treeItem.description === "string" ? treeItem.description : treeItem.resourceUri?.fsPath ?? ""

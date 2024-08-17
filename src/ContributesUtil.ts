@@ -20,7 +20,7 @@ export async function loadContributesMenu(webview: vscode.Webview, extension: vs
       console.error(`not found command ${context.command}`);
       continue;
     }
-    if( context.group === "inline"){
+    if (context.group === "inline") {
       actionBarMenu.push({
         command: context.command,
         title: command.title,
@@ -28,7 +28,7 @@ export async function loadContributesMenu(webview: vscode.Webview, extension: vs
         iconClasses: await resolveIconClass(webview, command.icon),
         unparsedWhen: context.when,
       });
-    }else{
+    } else {
       contextMenu.push({
         command: context.command,
         title: command.title,
@@ -415,7 +415,7 @@ function cssEscape(value: any) {
  * @param {vscode.TreeItem} treeItem
  * @return {*}  {Promise<string>} 
  */
-export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise<string> {
+export async function resolveTreeIconClasses(treeItem: vscode.TreeItem, option: { isUseVscodeOpenTextDocument?: boolean }): Promise<string> {
   // from https://github.com/microsoft/vscode/blob/14addc7735fcb99fd42c35e5d7e8e984611132b8/src/vs/editor/common/services/getIconClasses.ts#L17
   const fileIconDirectoryRegex = /(?:\/|^)(?:([^/]+)\/)?([^/]+)$/;
   function isThemeColor(obj: any): obj is vscode.ThemeColor {
@@ -510,7 +510,7 @@ export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise
       }
 
       // Detected Mode
-      const detectedLanguageId = await detectLanguageId(resource);
+      const detectedLanguageId = await detectLanguageId(resource, option);
       if (detectedLanguageId) {
         classes.push(`${cssEscape(detectedLanguageId)}-lang-file-icon`);
       }
@@ -521,7 +521,7 @@ export async function resolveTreeIconClasses(treeItem: vscode.TreeItem): Promise
 
 let cache: Record<string, string>;
 let cachePattern: Record<string, Minimatch> = {};
-async function detectLanguageId(resource: vscode.Uri): Promise<string | undefined> {
+async function detectLanguageId(resource: vscode.Uri, option: { isUseVscodeOpenTextDocument?: boolean; }): Promise<string | undefined> {
   const filesAssociations = cache || vscode.workspace.getConfiguration('files').get<Record<string, string>>('associations');
   if (filesAssociations) {
     cache = filesAssociations;
@@ -544,8 +544,10 @@ async function detectLanguageId(resource: vscode.Uri): Promise<string | undefine
 
   try {
     // TODO: too slow
-    // const document = await vscode.workspace.openTextDocument(resource);
-    // return document.languageId;
+    if (option?.isUseVscodeOpenTextDocument) {
+      const document = await vscode.workspace.openTextDocument(resource);
+      return document.languageId;
+    }
   } catch (e) {
     // 
   }
